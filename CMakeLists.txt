@@ -48,10 +48,46 @@ MESSAGE("-- CMAKE_CONFIGURATION_TYPES=${CMAKE_CONFIGURATION_TYPES}")
 
 MESSAGE("-- CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
 
-set (MPP_HEADERS include) 
-set (EXTDRV_HEADERS extdrv/tw2865) 
+set(CMAKE_INCLUDE_PATH ${CMAKE_PREFIX_PATH}/usr/include/)
+MESSAGE("-- CMAKE_INCLUDE_PATH = ${CMAKE_INCLUDE_PATH}")
+
+# file(GLOB_RECURSE MPP_HEADERS ${CMAKE_PREFIX_PATH}/ hi_common.h)
+
+
+# find_path(MPP_HEADERS hi_common.h PATHS ${CMAKE_PREFIX_PATH}/usr/include/hisi-osdrv/)
+find_path(MPP_HEADERS hi_common.h PATHS /usr/include/himpp-dev/)
+
+# find_library(ISP_LIB isp)
+# find_library(MPI_LIB mpi)
+# find_library(HIAE_LIB _hiae)
+# find_library(HIAF_LIB _hiaf)
+# find_library(HIAWB_LIB _hiawb)
+# find_library(AEC_LIB aec)
+# find_library(RESAMPLER_LIB resampler)
+# find_library(ANR_LIB anr)
+# find_library(VQEV2_LIB vqev2)
+# find_library(VO_EN_LIB VoiceEngine)
+# find_library(DNVQE_LIB dnvqe)
+# find_library(UPVQE_LIB upvqe)
+# find_library(MPP_LIB hisi_comm_audio)
+# find_library(MPP_LIB hisi_comm_isp)
+# find_library(MPP_LIB hisi_comm_venc)
+# find_library(MPP_LIB hisi_comm_sys)
+# find_library(MPP_LIB hisi_comm_vi)
+
+ 
+
+
+# find_path(MPP_LIBS ${MPP_LIB})
+
+# set (MPP_HEADERS ${STAGING_DIR}/usr/include/hisi-osdrv) 
+MESSAGE("-- CMAKE_PREFIX_PATH = ${CMAKE_PREFIX_PATH}")
+MESSAGE("-- CMAKE_INCLUDE_PATH = ${CMAKE_INCLUDE_PATH}")
+MESSAGE("-- MPP_HEADERS = ${MPP_HEADERS}")
+MESSAGE("-- MPP_LIBS = ${MPP_LIBS}")
+# set (EXTDRV_HEADERS ./extdrv/tw2865) 
 # set (GLOBAL_HEADERS ${home}/staging_dir/target-arm_arm926ej-s_uClibc-0.9.33.2_eabi/usr/include) 
-# set (GLOBAL_LIBS ${home}/staging_dir/target-arm_arm926ej-s_uClibc-0.9.33.2_eabi/usr/lib) 
+set (GLOBAL_LIBS /usr/lib) 
 # set (MPP_LIBS ./lib/) 
 # set (MPP_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/lib) 
 
@@ -63,6 +99,9 @@ add_library(hisi_comm_vi STATIC hi_sdk/hisi_comm_vi.c)
 add_library(sensor STATIC hi_sdk/sensor.c)
 # add_library(imx138_sensor_ctl STATIC hi_sdk/imx138_sensor_ctl.c)
 # add_library(imx138_cmos STATIC hi_sdk/imx138_cmos.c)
+
+
+MESSAGE("-- GLOBAL_LIBS = ${GLOBAL_LIBS}")
 
 IF(CMAKE_CONFIGURATION_TYPES MATCHES audio)
 	MESSAGE("-- Audio streamer build.")
@@ -80,16 +119,20 @@ IF(CMAKE_CONFIGURATION_TYPES MATCHES audio)
 	set (CMAKE_C_FLAGS "-std=gnu99 ${CMAKE_C_FLAGS}")
 
 	include_directories(${MPP_HEADERS})
-	include_directories(${EXTDRV_HEADERS})
+	# include_directories(${EXTDRV_HEADERS})
 	include_directories(${GLOBAL_HEADERS})
 	add_definitions(-DPJ_AUTOCONF=1 -DHICHIP=0x35180100 -DHI_DEBUG -DHI_XXXX -DISP_V1 -DPJMEDIA_AUDIO_DEV_HAS_HISILICON_AUDIO -DPJMEDIA_HAS_H264_HISILICON_PASSTHROUGH_VID_CODEC=1 -DPJ_IS_BIG_ENDIAN=0 -DPJ_IS_LITTLE_ENDIAN=1 -DSENSOR_TYPE=SONY_IMX138_DC_720P_30FPS -Dhi3518)
 	# add_definitions(-DPJ_AUTOCONF=1 -DPJ_IS_LITTLE_ENDIAN=1 -DPJ_IS_BIG_ENDIAN=0 -DPJMEDIA_AUDIO_DEV_HAS_HISILICON_AUDIO)
 
 	target_link_libraries(${PROJECT}-audio audio_stream_util audiodev hisi_audio_dev pj pjlib-util 
-	pjmedia-audiodev pjmedia-codec pjmedia opus uuid pjnath srtp isp mpi _hiae _hiaf _hiawb aec resampler anr vqev2 VoiceEngine dnvqe upvqe
+	pjmedia-audiodev pjmedia-codec pjmedia opus uuid pjnath srtp 
+	isp mpi _hiae _hiaf _hiawb aec resampler anr vqev2 VoiceEngine dnvqe upvqe
 	hisi_comm_audio hisi_comm_isp hisi_comm_venc hisi_comm_sys hisi_comm_vi)
 	 # sensor imx138_sensor_ctl imx138_cmos)
 
+	# ${ISP_LIB} ${MPI_LIB} ${HIAE_LIB} ${HIAF_LIB} ${HIAWB_LIB} ${AEC_LIB} ${RESAMPLER_LIB}
+	# ${ANR_LIB} ${VQEV2_LIB} ${VO_EN_LIB} ${DNVQE_LIB} ${UPVQE_LIB}
+	# isp mpi _hiae _hiaf _hiawb aec resampler anr vqev2 VoiceEngine dnvqe upvqe
 
 	install(TARGETS ${PROJECT}-audio DESTINATION bin)
 ELSEIF(CMAKE_CONFIGURATION_TYPES MATCHES video)

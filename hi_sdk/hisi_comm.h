@@ -14,7 +14,7 @@
 #ifndef HISI_COMM_H
 #define HISI_COMM_H
 
-#include "tw2865.h"
+// #include "tw2865.h"
 #include "hi_common.h"
 #include "hi_comm_sys.h"
 #include "hi_comm_vb.h"
