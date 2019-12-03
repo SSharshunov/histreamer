@@ -53,7 +53,7 @@ set (EXTDRV_HEADERS extdrv/tw2865)
 # set (GLOBAL_HEADERS ${home}/staging_dir/target-arm_arm926ej-s_uClibc-0.9.33.2_eabi/usr/include) 
 # set (GLOBAL_LIBS ${home}/staging_dir/target-arm_arm926ej-s_uClibc-0.9.33.2_eabi/usr/lib) 
 # set (MPP_LIBS ./lib/) 
-set (MPP_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/lib) 
+# set (MPP_LIBS ${CMAKE_CURRENT_SOURCE_DIR}/lib) 
 
 add_library(hisi_comm_audio STATIC hi_sdk/hisi_comm_audio.c)
 add_library(hisi_comm_isp STATIC hi_sdk/hisi_comm_isp.c)
@@ -68,7 +68,7 @@ IF(CMAKE_CONFIGURATION_TYPES MATCHES audio)
 	MESSAGE("-- Audio streamer build.")
 	# link_directories(/home/ussh/work/tools/netbeans/work/camopenwrt_docker/chaos_calmer/staging_dir/target-arm_arm926ej-s_uClibc-0.9.33.2_eabi/usr/lib/)
 	link_directories(${GLOBAL_LIBS})
-	link_directories(${MPP_LIBS})
+	# link_directories(${MPP_LIBS})
 	# find_library(OPUS_LIBRARY opus HINTS ${GLOBAL_LIBS})
 
 
