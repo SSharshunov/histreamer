@@ -19,7 +19,6 @@ static void my_perror(const char *title, pj_status_t status)
 }
 
 int audio_stream_util(int argc, char *argv[]);
-int vidstreammain(int argc, char *argv[]);
 
 /*
  * 
@@ -39,7 +38,6 @@ int main(int argc, char** argv) {
 
     PJ_LOG(2, (THIS_FILE, "init done, starting app"));
     audio_stream_util(argc, argv);
-//    vidstreammain(argc, argv);
     
     // pj_caching_pool_destroy(&cp);
     PJ_LOG(2, (THIS_FILE, "pj_shutdown.."));
