@@ -147,7 +147,7 @@ ELSEIF(CMAKE_CONFIGURATION_TYPES MATCHES video)
 
 	add_definitions(-DPJ_AUTOCONF=1 -DHICHIP=0x35180100 -DHI_DEBUG -DHI_XXXX -DISP_V1 -DPJMEDIA_AUDIO_DEV_HAS_HISILICON_AUDIO -DPJMEDIA_HAS_H264_HISILICON_PASSTHROUGH_VID_CODEC=1 -DPJ_IS_BIG_ENDIAN=0 -DPJ_IS_LITTLE_ENDIAN=1 -DSENSOR_TYPE=SONY_IMX138_DC_720P_30FPS -Dhi3518)
 	target_link_libraries(${PROJECT}-video video_stream_util audiodev hisi_audio_dev 
-		h264_hisilicon_passthrough_vid_codecs  
+		h264_hisilicon_passthrough_vid_codecs yuv
 		vid_port vid_stream hi_sdk_helper pj pjlib-util pjmedia-audiodev pjmedia-codec pjmedia-videodev pjmedia pjnath srtp opus uuid
 		 isp mpi _hiae _hiaf _hiawb aec resampler anr vqev2 VoiceEngine dnvqe upvqe 
 		 hisi_comm_audio
