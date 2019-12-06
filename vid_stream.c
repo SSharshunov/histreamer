@@ -32,7 +32,7 @@
 #include <pj/pool.h>
 #include <pj/rand.h>
 #include <pj/sock_select.h>
-#include <pj/string.h>	    /* memcpy() */
+#include <pj/string.h>      /* memcpy() */
 #include <pjmedia-codec/h263_packetizer.h>
 #include <pjmedia-codec/h264_packetizer.h>
 #include <pjlib-util/json.h>
@@ -42,45 +42,41 @@
 
 #include "hi_sdk/hisi_comm.h"
 
-//pj_json_elem* load_json_config(pj_pool_t *pool, const char *filename, pj_off_t *size);
 pj_json_elem* load_json_config(pj_pool_t *pool, const char *filename);
 int stop_sdk(HISI_SDK_APP_S *app);
 int start_sdk(HISI_SDK_APP_S *app);
 HISI_SDK_APP_S* fill_app_from_config(pj_pool_t *pool, pj_json_elem* value);
 
-//#include <pjmedia/hisi_common.h>
 #include "hi_comm_venc.h"
 
-#define THIS_FILE			"vid_stream.c"
-#define ERRLEVEL			1
-#define LOGERR_(expr)			stream_perror expr
+#define THIS_FILE           "vid_stream.c"
+#define ERRLEVEL            1
+#define LOGERR_(expr)           stream_perror expr
 #define TRC_(expr)          PJ_LOG(4,expr)
-// #define TRC_(expr)			PJ_LOG(5,expr)
-#define SIGNATURE			PJMEDIA_SIG_PORT_VID_STREAM
+// #define TRC_(expr)           PJ_LOG(5,expr)
+#define SIGNATURE           PJMEDIA_SIG_PORT_VID_STREAM
 
  #define TRACE_RC            0
-//#define TRACE_RC			1
 
 /* Tracing jitter buffer operations in a stream session to a CSV file.
  * The trace will contain JB operation timestamp, frame info, RTP info, and
  * the JB state right after the operation.
  */
 #define TRACE_JB            0   /* Enable/disable trace.    */
-// #define TRACE_JB			1	/* Enable/disable trace.    */
-#define TRACE_JB_PATH_PREFIX		""	/* Optional path/prefix
-						   for the CSV filename.    */
+#define TRACE_JB_PATH_PREFIX        ""  /* Optional path/prefix
+                           for the CSV filename.    */
 #if TRACE_JB
 #   include <pj/file_io.h>
-#   define TRACE_JB_INVALID_FD		((pj_oshandle_t)-1)
-#   define TRACE_JB_OPENED(s)		(s->trace_jb_fd != TRACE_JB_INVALID_FD)
+#   define TRACE_JB_INVALID_FD      ((pj_oshandle_t)-1)
+#   define TRACE_JB_OPENED(s)       (s->trace_jb_fd != TRACE_JB_INVALID_FD)
 #endif
 
 #ifndef PJMEDIA_VSTREAM_SIZE
-#   define PJMEDIA_VSTREAM_SIZE	1000
+#   define PJMEDIA_VSTREAM_SIZE 1000
 #endif
 
 #ifndef PJMEDIA_VSTREAM_INC
-#   define PJMEDIA_VSTREAM_INC	1000
+#   define PJMEDIA_VSTREAM_INC  1000
 #endif
 
 /* Due to network MTU limitation, a picture bitstream may be splitted into
@@ -89,7 +85,7 @@ HISI_SDK_APP_S* fill_app_from_config(pj_pool_t *pool, pj_json_elem* value);
  * number to be allocated to store a picture bitstream in decoding direction.
  */
 #define MIN_CHUNKS_PER_FRM  25
-// #define MIN_CHUNKS_PER_FRM	30
+// #define MIN_CHUNKS_PER_FRM   30
 
 /* Video stream keep-alive feature is currently disabled. */
 #if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA != 0
@@ -103,14 +99,14 @@ HISI_SDK_APP_S* fill_app_from_config(pj_pool_t *pool, pj_json_elem* value);
  */
 typedef struct pjmedia_vid_channel
 {
-    pjmedia_vid_stream	   *stream;	    /**< Parent stream.		    */
-    pjmedia_dir		    dir;	    /**< Channel direction.	    */
-    pjmedia_port	    port;	    /**< Port interface.	    */
-    unsigned		    pt;		    /**< Payload type.		    */
-    pj_bool_t		    paused;	    /**< Paused?.		    */
-    void		   *buf;	    /**< Output buffer.		    */
-    unsigned		    buf_size;	    /**< Size of output buffer.	    */
-    pjmedia_rtp_session	    rtp;	    /**< RTP session.		    */
+    pjmedia_vid_stream     *stream;     /**< Parent stream.         */
+    pjmedia_dir         dir;        /**< Channel direction.     */
+    pjmedia_port        port;       /**< Port interface.        */
+    unsigned            pt;         /**< Payload type.          */
+    pj_bool_t           paused;     /**< Paused?.           */
+    void           *buf;        /**< Output buffer.         */
+    unsigned            buf_size;       /**< Size of output buffer.     */
+    pjmedia_rtp_session     rtp;        /**< RTP session.           */
 } pjmedia_vid_channel;
 
 
@@ -123,94 +119,94 @@ typedef struct pjmedia_vid_channel
  */
 struct pjmedia_vid_stream
 {
-    pj_pool_t		    *own_pool;      /**< Internal pool.		    */
-    pjmedia_endpt	    *endpt;	    /**< Media endpoint.	    */
-    pjmedia_vid_codec_mgr   *codec_mgr;	    /**< Codec manager.		    */
-    pjmedia_vid_stream_info  info;	    /**< Stream info.		    */
+    pj_pool_t           *own_pool;      /**< Internal pool.         */
+    pjmedia_endpt       *endpt;     /**< Media endpoint.        */
+    pjmedia_vid_codec_mgr   *codec_mgr;     /**< Codec manager.         */
+    pjmedia_vid_stream_info  info;      /**< Stream info.           */
 
-    pjmedia_vid_channel	    *enc;	    /**< Encoding channel.	    */
-    pjmedia_vid_channel	    *dec;	    /**< Decoding channel.	    */
+    pjmedia_vid_channel     *enc;       /**< Encoding channel.      */
+    pjmedia_vid_channel     *dec;       /**< Decoding channel.      */
 
-    pjmedia_dir		     dir;	    /**< Stream direction.	    */
-    void		    *user_data;	    /**< User data.		    */
-    pj_str_t		     name;	    /**< Stream name		    */
-    pj_str_t		     cname;	    /**< SDES CNAME		    */
+    pjmedia_dir          dir;       /**< Stream direction.      */
+    void            *user_data;     /**< User data.         */
+    pj_str_t             name;      /**< Stream name            */
+    pj_str_t             cname;     /**< SDES CNAME         */
 
-    pjmedia_transport	    *transport;	    /**< Stream transport.	    */
-    unsigned		     send_err_cnt;  /**< Send error count.          */
+    pjmedia_transport       *transport;     /**< Stream transport.      */
+    unsigned             send_err_cnt;  /**< Send error count.          */
 
-    pj_mutex_t		    *jb_mutex;
-    pjmedia_jbuf	    *jb;	    /**< Jitter buffer.		    */
-    char		     jb_last_frm;   /**< Last frame type from jb    */
-    unsigned		     jb_last_frm_cnt;/**< Last JB frame type counter*/
+    pj_mutex_t          *jb_mutex;
+    pjmedia_jbuf        *jb;        /**< Jitter buffer.         */
+    char             jb_last_frm;   /**< Last frame type from jb    */
+    unsigned             jb_last_frm_cnt;/**< Last JB frame type counter*/
 
-    pjmedia_rtcp_session     rtcp;	    /**< RTCP for incoming RTP.	    */
-    pj_uint32_t		     rtcp_last_tx;  /**< RTCP tx time in timestamp  */
-    pj_uint32_t		     rtcp_interval; /**< Interval, in timestamp.    */
-    pj_bool_t		     initial_rr;    /**< Initial RTCP RR sent	    */
+    pjmedia_rtcp_session     rtcp;      /**< RTCP for incoming RTP.     */
+    pj_uint32_t          rtcp_last_tx;  /**< RTCP tx time in timestamp  */
+    pj_uint32_t          rtcp_interval; /**< Interval, in timestamp.    */
+    pj_bool_t            initial_rr;    /**< Initial RTCP RR sent       */
     pj_bool_t                rtcp_sdes_bye_disabled;/**< Send RTCP SDES/BYE?*/
-    void		    *out_rtcp_pkt;  /**< Outgoing RTCP packet.	    */
-    unsigned		     out_rtcp_pkt_size;
-					    /**< Outgoing RTCP packet size. */
+    void            *out_rtcp_pkt;  /**< Outgoing RTCP packet.      */
+    unsigned             out_rtcp_pkt_size;
+                        /**< Outgoing RTCP packet size. */
 
-    unsigned		     dec_max_size;  /**< Size of decoded/raw picture*/
-    pjmedia_ratio	     dec_max_fps;   /**< Max fps of decoding dir.   */
-    pjmedia_frame            dec_frame;	    /**< Current decoded frame.     */
-    pjmedia_event            fmt_event;	    /**< Buffered fmt_changed event
-                                                 to avoid deadlock	    */
+    unsigned             dec_max_size;  /**< Size of decoded/raw picture*/
+    pjmedia_ratio        dec_max_fps;   /**< Max fps of decoding dir.   */
+    pjmedia_frame            dec_frame;     /**< Current decoded frame.     */
+    pjmedia_event            fmt_event;     /**< Buffered fmt_changed event
+                                                 to avoid deadlock      */
     pjmedia_event            miss_keyframe_event;
-					    /**< Buffered missing keyframe
+                        /**< Buffered missing keyframe
                                                  event for delayed republish*/
 
-    unsigned		     frame_size;    /**< Size of encoded base frame.*/
-    unsigned		     frame_ts_len;  /**< Frame length in timestamp. */
+    unsigned             frame_size;    /**< Size of encoded base frame.*/
+    unsigned             frame_ts_len;  /**< Frame length in timestamp. */
 
-    unsigned		     rx_frame_cnt;  /**< # of array in rx_frames    */
-    pjmedia_frame	    *rx_frames;	    /**< Temp. buffer for incoming
-					         frame assembly.	    */
-    pj_bool_t		     force_keyframe;/**< Forced to encode keyframe? */
-    unsigned		     num_keyframe;  /**< The number of keyframe needed
-						 to be sent, after the stream
-						 is created. */
-    pj_timestamp	     last_keyframe_tx;
-					    /**< Timestamp of the last
-						 keyframe. */
+    unsigned             rx_frame_cnt;  /**< # of array in rx_frames    */
+    pjmedia_frame       *rx_frames;     /**< Temp. buffer for incoming
+                             frame assembly.        */
+    pj_bool_t            force_keyframe;/**< Forced to encode keyframe? */
+    unsigned             num_keyframe;  /**< The number of keyframe needed
+                         to be sent, after the stream
+                         is created. */
+    pj_timestamp         last_keyframe_tx;
+                        /**< Timestamp of the last
+                         keyframe. */
 
 
 #if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-    pj_bool_t		     use_ka;	       /**< Stream keep-alive with non-
-						    codec-VAD mechanism is
-						    enabled?		    */
-    pj_timestamp	     last_frm_ts_sent; /**< Timestamp of last sending
-					            packet		    */
+    pj_bool_t            use_ka;           /**< Stream keep-alive with non-
+                            codec-VAD mechanism is
+                            enabled?            */
+    pj_timestamp         last_frm_ts_sent; /**< Timestamp of last sending
+                                packet          */
 #endif
 
 #if TRACE_JB
-    pj_oshandle_t	     trace_jb_fd;   /**< Jitter tracing file handle.*/
-    char		    *trace_jb_buf;  /**< Jitter tracing buffer.	    */
+    pj_oshandle_t        trace_jb_fd;   /**< Jitter tracing file handle.*/
+    char            *trace_jb_buf;  /**< Jitter tracing buffer.     */
 #endif
 
-    pjmedia_vid_codec	    *codec;	    /**< Codec instance being used. */
-    pj_uint32_t		     last_dec_ts;   /**< Last decoded timestamp.    */
-    int			     last_dec_seq;  /**< Last decoded sequence.     */
-    pj_status_t		     rtp_rx_last_err; /**< Last RTP recv() error.   */
+    pjmedia_vid_codec       *codec;     /**< Codec instance being used. */
+    pj_uint32_t          last_dec_ts;   /**< Last decoded timestamp.    */
+    int              last_dec_seq;  /**< Last decoded sequence.     */
+    pj_status_t          rtp_rx_last_err; /**< Last RTP recv() error.   */
 
-    pj_timestamp	     ts_freq;	    /**< Timestamp frequency.	    */
+    pj_timestamp         ts_freq;       /**< Timestamp frequency.       */
 
-    pj_sockaddr		     rem_rtp_addr;  /**< Remote RTP address	    */
-    unsigned		     rem_rtp_flag;  /**< Indicator flag about
-						 packet from this addr.
-						 0=no pkt, 1=good ssrc pkts,
-						 2=bad ssrc pkts	    */
-    pj_sockaddr		     rtp_src_addr;  /**< Actual packet src addr.    */
-    unsigned		     rtp_src_cnt;   /**< How many pkt from this addr*/
+    pj_sockaddr          rem_rtp_addr;  /**< Remote RTP address     */
+    unsigned             rem_rtp_flag;  /**< Indicator flag about
+                         packet from this addr.
+                         0=no pkt, 1=good ssrc pkts,
+                         2=bad ssrc pkts        */
+    pj_sockaddr          rtp_src_addr;  /**< Actual packet src addr.    */
+    unsigned             rtp_src_cnt;   /**< How many pkt from this addr*/
 
 #if TRACE_RC
-    unsigned		     rc_total_sleep;
-    unsigned		     rc_total_pkt;
-    unsigned		     rc_total_img;
-    pj_timestamp	     tx_start;
-    pj_timestamp	     tx_end;
+    unsigned             rc_total_sleep;
+    unsigned             rc_total_pkt;
+    unsigned             rc_total_img;
+    pj_timestamp         tx_start;
+    pj_timestamp         tx_end;
 
 #endif
     
@@ -228,20 +224,7 @@ struct pjmedia_vid_stream
 
     void                *enc_buf;
     unsigned             enc_buf_size;
-    //    pj_bool_t                   thread_quit;
-//    pj_bool_t                   thread_exited;
-//    pj_bool_t                   thread_initialized;
-//    pj_thread_t                *thread;
-//    pj_pool_t                  *cv_pool;    /**< Video thread memory pool       */
-//    pj_pool_t		    *encoder_pool;
-//    pjmedia_h264_packetizer *pktz;
-//    pj_bool_t has_more_data;
-//    unsigned             enc_frame_size;
-//    unsigned             enc_processed;
-//    pj_uint8_t          *enc_frame_whole;
-//    pj_uint8_t          *enc_buf;
-////    void                *enc_buf;
-//    unsigned             enc_buf_size;
+
     HISI_SDK_APP_S *hisi_app_config;
 };
 
@@ -251,19 +234,12 @@ pj_status_t log_bytes1(const void *object, size_t size) {
     const unsigned char * const bytes = object;
     size_t i;
     char str[200];
-//    pj_str_t pstr;
-//    pj_snprintf()
-//            
-//    pstr.ptr = (char*) pj_pool_alloc(pool, size);
-//    pstr.slen = pj_ansi_snprintf(name.ptr, M, "%s%p", type_name, stream);
     
     sprintf(str, "%s", "");
     int edge = 99;
 
-    // for(i = 0; i < size; i++)
     if (size > edge) {
         for(i = 0; i < edge; i++) {
-//             printf("%u: %02x ", i, bytes[i]);
             if (i == 0) {
                 
                 sprintf(str, "%02x", bytes[i]);
@@ -274,17 +250,14 @@ pj_status_t log_bytes1(const void *object, size_t size) {
         }
     } else {
         for(i = 0; i < size; i++) {
-            // printf("%02x ", bytes[i]);
             if (i == 0) {
                 sprintf(str, "%02x", bytes[i]);
             } else {
                 sprintf(str, "%s %02x", str, bytes[i]);
             }
-            // sprintf(str, "%s %02x", str, bytes[i]);
         }
     }
-    // printf("[ ");
-    // printf("]\n");
+
     PJ_LOG(4,(THIS_FILE, "size: %d, [ %s ]", size, str));
     return PJ_SUCCESS;
 }
@@ -294,14 +267,11 @@ static int encode_more(pjmedia_vid_stream *stream, unsigned out_size, pjmedia_fr
     pj_size_t payload_len;
     pj_status_t status;
 
-    // PJ_LOG(3, (THIS_FILE, "encode_more"));
-
     PJ_ASSERT_RETURN(stream && out_size && output && has_more, PJ_EINVAL);
 
     pjmedia_vid_stream* strm = (pjmedia_vid_stream *) stream;
 
     if (strm->enc_processed < strm->enc_frame_size) {
-        // PJ_LOG(4, (THIS_FILE, "%s: h264_passthrough_data->enc_processed < h264_passthrough_data->enc_frame_size", __FUNCTION__));
         /* We have outstanding frame in packetizer */
         status = pjmedia_h264_packetize(strm->pktz,
                                         strm->enc_frame_whole,
@@ -313,10 +283,6 @@ static int encode_more(pjmedia_vid_stream *stream, unsigned out_size, pjmedia_fr
             strm->enc_frame_size = strm->enc_processed = 0;
             *has_more = (strm->enc_processed <
                     strm->enc_frame_size);
-            // *has_more = (strm->enc_processed <
-            //         strm->enc_frame_size) ||
-            //     (strm->ilayer < strm->iLayerNum);
-
             PJ_PERROR(3,(THIS_FILE, status, "pjmedia_h264_packetize() error"));
             return status;
         }
@@ -327,34 +293,13 @@ static int encode_more(pjmedia_vid_stream *stream, unsigned out_size, pjmedia_fr
         pj_memcpy(output->buf, payload, payload_len);
         output->size = payload_len;
 
-        // if (h264_passthrough_data->bsi.eFrameType == videoFrameTypeIDR) {
-        //    output->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-        // }
-        // if (strm->isIDR == PJ_TRUE) {
-        //     // PJ_LOG(4, (THIS_FILE, "%s: This is keyframe", __FUNCTION__));
-        //     output->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-        //     strm->isIDR = PJ_FALSE;
-        // } else {
-        //     // PJ_LOG(4, (THIS_FILE, "%s: This is not keyframe", __FUNCTION__));
-        // }
-
-        // PJ_LOG(4, (THIS_FILE, "%s: strm->enc_processed   = %u of %u", __FUNCTION__, strm->enc_processed, strm->enc_frame_size));
-        // strm->ilayer++;
         *has_more = (strm->enc_processed < strm->enc_frame_size);
-        // *has_more = (strm->enc_processed < strm->enc_frame_size) ||
-        //         (strm->ilayer < strm->iLayerNum);
-        // if (*has_more == PJ_TRUE) {
-        //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_TRUE", __FUNCTION__));
-        // } else {
-        //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_FALSE", __FUNCTION__));
-        // }
         return PJ_SUCCESS;
     }
 
     strm->enc_frame_size = strm->enc_buf_size;
 
     strm->enc_frame_whole = strm->enc_buf;
-    // h264_passthrough_data->enc_frame_whole = pLayerBsInfo->pBsBuf;
     strm->enc_processed = 0;
 
     status = pjmedia_h264_packetize(strm->pktz,
@@ -377,35 +322,26 @@ static int encode_more(pjmedia_vid_stream *stream, unsigned out_size, pjmedia_fr
     pj_memcpy(output->buf, payload, payload_len);
     output->size = payload_len;
 
+    free(strm->enc_buf);
 
-    *has_more = (strm->enc_processed < strm->enc_frame_size); // ||
-            // (strm->ilayer < strm->iLayerNum);
-    // if (*has_more == PJ_TRUE) {
-    //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_TRUE", __FUNCTION__));
-    // } else {
-    //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_FALSE", __FUNCTION__));
-    // }
+    *has_more = (strm->enc_processed < strm->enc_frame_size);
     return PJ_SUCCESS;
 }
 
 static int encode_begin(pjmedia_vid_stream *stream, const pjmedia_vid_encode_opt *opt,
     const pjmedia_frame *input, unsigned out_size, pjmedia_frame *output, pj_bool_t *has_more) {
 
-    // PJ_LOG(3, (THIS_FILE, "encode_begin"));
-
     PJ_ASSERT_RETURN(stream && input && out_size && output && has_more,
                      PJ_EINVAL);
 
-    // const pjmedia_frame *input_ = (const pjmedia_frame*) input;
     pjmedia_vid_stream* strm = (pjmedia_vid_stream *) stream;
 
     strm->enc_buf_size = input->size;
-    strm->enc_buf = pj_pool_alloc(strm->cv_pool, strm->enc_buf_size);
+    
+    strm->enc_buf = (unsigned char *) calloc(strm->enc_buf_size, sizeof(unsigned char));
+    
     strm->enc_frame_size = strm->enc_processed = 0;
 
-
-
-    // h264_passthrough_data->enc_buf = input->buf;
     pj_memcpy(strm->enc_buf , input->buf, strm->enc_buf_size);
 
     return encode_more(strm, out_size, output, has_more);
@@ -420,7 +356,7 @@ static pj_status_t decode_frame(pjmedia_vid_stream *stream,
  * Print error.
  */
 static void stream_perror(const char *sender, const char *title,
-			  pj_status_t status)
+              pj_status_t status)
 {
     char errmsg[PJ_ERR_MSG_SIZE];
 
@@ -430,8 +366,8 @@ static void stream_perror(const char *sender, const char *title,
 
 
 static pj_status_t send_rtcp(pjmedia_vid_stream *stream,
-			     pj_bool_t with_sdes,
-			     pj_bool_t with_bye);
+                 pj_bool_t with_sdes,
+                 pj_bool_t with_bye);
 
 static void on_rx_rtcp( void *data,
                         void *pkt,
@@ -446,7 +382,7 @@ PJ_INLINE(int) trace_jb_print_timestamp(char **buf, pj_ssize_t len)
     char *p = *buf;
 
     if (len < 14)
-	return -1;
+    return -1;
 
     pj_gettimeofday(&now);
     pj_time_decode(&now, &ptime);
@@ -465,7 +401,7 @@ PJ_INLINE(int) trace_jb_print_timestamp(char **buf, pj_ssize_t len)
 }
 
 PJ_INLINE(int) trace_jb_print_state(pjmedia_vid_stream *stream,
-				    char **buf, pj_ssize_t len)
+                    char **buf, pj_ssize_t len)
 {
     char *p = *buf;
     char *endp = *buf + len;
@@ -474,9 +410,9 @@ PJ_INLINE(int) trace_jb_print_state(pjmedia_vid_stream *stream,
     pjmedia_jbuf_get_state(stream->jb, &state);
 
     len = pj_ansi_snprintf(p, endp-p, "%d, %d, %d",
-			   state.size, state.burst, state.prefetch);
+               state.size, state.burst, state.prefetch);
     if ((len < 0) || (len >= endp-p))
-	return -1;
+    return -1;
 
     p += len;
     *buf = p;
@@ -484,7 +420,7 @@ PJ_INLINE(int) trace_jb_print_state(pjmedia_vid_stream *stream,
 }
 
 static void trace_jb_get(pjmedia_vid_stream *stream, pjmedia_jb_frame_type ft,
-			 pj_size_t fsize)
+             pj_size_t fsize)
 {
     char *p = stream->trace_jb_buf;
     char *endp = stream->trace_jb_buf + PJ_LOG_MAX_SIZE;
@@ -492,44 +428,44 @@ static void trace_jb_get(pjmedia_vid_stream *stream, pjmedia_jb_frame_type ft,
     const char* ft_st;
 
     if (!TRACE_JB_OPENED(stream))
-	return;
+    return;
 
     /* Print timestamp. */
     if (trace_jb_print_timestamp(&p, endp-p))
-	goto on_insuff_buffer;
+    goto on_insuff_buffer;
 
     /* Print frame type and size */
     switch(ft) {
-	case PJMEDIA_JB_MISSING_FRAME:
-	    ft_st = "missing";
-	    break;
-	case PJMEDIA_JB_NORMAL_FRAME:
-	    ft_st = "normal";
-	    break;
-	case PJMEDIA_JB_ZERO_PREFETCH_FRAME:
-	    ft_st = "prefetch";
-	    break;
-	case PJMEDIA_JB_ZERO_EMPTY_FRAME:
-	    ft_st = "empty";
-	    break;
-	default:
-	    ft_st = "unknown";
-	    break;
+    case PJMEDIA_JB_MISSING_FRAME:
+        ft_st = "missing";
+        break;
+    case PJMEDIA_JB_NORMAL_FRAME:
+        ft_st = "normal";
+        break;
+    case PJMEDIA_JB_ZERO_PREFETCH_FRAME:
+        ft_st = "prefetch";
+        break;
+    case PJMEDIA_JB_ZERO_EMPTY_FRAME:
+        ft_st = "empty";
+        break;
+    default:
+        ft_st = "unknown";
+        break;
     }
 
     /* Print operation, size, frame count, frame type */
     len = pj_ansi_snprintf(p, endp-p, "GET,%d,1,%s,,,,", fsize, ft_st);
     if ((len < 0) || (len >= endp-p))
-	goto on_insuff_buffer;
+    goto on_insuff_buffer;
     p += len;
 
     /* Print JB state */
     if (trace_jb_print_state(stream, &p, endp-p))
-	goto on_insuff_buffer;
+    goto on_insuff_buffer;
 
     /* Print end of line */
     if (endp-p < 2)
-	goto on_insuff_buffer;
+    goto on_insuff_buffer;
     *p++ = '\n';
 
     /* Write and flush */
@@ -543,36 +479,36 @@ on_insuff_buffer:
 }
 
 static void trace_jb_put(pjmedia_vid_stream *stream,
-			 const pjmedia_rtp_hdr *hdr,
-			 unsigned payloadlen, unsigned frame_cnt)
+             const pjmedia_rtp_hdr *hdr,
+             unsigned payloadlen, unsigned frame_cnt)
 {
     char *p = stream->trace_jb_buf;
     char *endp = stream->trace_jb_buf + PJ_LOG_MAX_SIZE;
     pj_ssize_t len = 0;
 
     if (!TRACE_JB_OPENED(stream))
-	return;
+    return;
 
     /* Print timestamp. */
     if (trace_jb_print_timestamp(&p, endp-p))
-	goto on_insuff_buffer;
+    goto on_insuff_buffer;
 
     /* Print operation, size, frame count, RTP info */
     len = pj_ansi_snprintf(p, endp-p,
-			   "PUT,%d,%d,,%d,%d,%d,",
-			   payloadlen, frame_cnt,
-			   pj_ntohs(hdr->seq), pj_ntohl(hdr->ts), hdr->m);
+               "PUT,%d,%d,,%d,%d,%d,",
+               payloadlen, frame_cnt,
+               pj_ntohs(hdr->seq), pj_ntohl(hdr->ts), hdr->m);
     if ((len < 0) || (len >= endp-p))
-	goto on_insuff_buffer;
+    goto on_insuff_buffer;
     p += len;
 
     /* Print JB state */
     if (trace_jb_print_state(stream, &p, endp-p))
-	goto on_insuff_buffer;
+    goto on_insuff_buffer;
 
     /* Print end of line */
     if (endp-p < 2)
-	goto on_insuff_buffer;
+    goto on_insuff_buffer;
     *p++ = '\n';
 
     /* Write and flush */
@@ -594,14 +530,14 @@ static void dump_port_info(const pjmedia_vid_channel *chan,
     char fourcc_name[5];
 
     PJ_LOG(5, (pi->name.ptr,
-	       " %s format %s: %dx%d %s%s %d/%d(~%d)fps",
-	       (chan->dir==PJMEDIA_DIR_DECODING? "Decoding":"Encoding"),
-	       event_name,
-	       pi->fmt.det.vid.size.w, pi->fmt.det.vid.size.h,
-	       pjmedia_fourcc_name(pi->fmt.id, fourcc_name),
-	       (chan->dir==PJMEDIA_DIR_ENCODING?"->":"<-"),
-	       pi->fmt.det.vid.fps.num, pi->fmt.det.vid.fps.denum,
-	       pi->fmt.det.vid.fps.num/pi->fmt.det.vid.fps.denum));
+           " %s format %s: %dx%d %s%s %d/%d(~%d)fps",
+           (chan->dir==PJMEDIA_DIR_DECODING? "Decoding":"Encoding"),
+           event_name,
+           pi->fmt.det.vid.size.w, pi->fmt.det.vid.size.h,
+           pjmedia_fourcc_name(pi->fmt.id, fourcc_name),
+           (chan->dir==PJMEDIA_DIR_ENCODING?"->":"<-"),
+           pi->fmt.det.vid.fps.num, pi->fmt.det.vid.fps.denum,
+           pi->fmt.det.vid.fps.num/pi->fmt.det.vid.fps.denum));
 }
 
 /*
@@ -613,24 +549,24 @@ static pj_status_t stream_event_cb(pjmedia_event *event,
     pjmedia_vid_stream *stream = (pjmedia_vid_stream*)user_data;
 
     if (event->epub == stream->codec) {
-	/* This is codec event */
-	switch (event->type) {
-	case PJMEDIA_EVENT_FMT_CHANGED:
-	    /* Copy the event to avoid deadlock if we publish the event
-	     * now. This happens because fmt_event may trigger restart
-	     * while we're still holding the jb_mutex.
-	     */
-	    pj_memcpy(&stream->fmt_event, event, sizeof(*event));
-	    return PJ_SUCCESS;
+    /* This is codec event */
+    switch (event->type) {
+    case PJMEDIA_EVENT_FMT_CHANGED:
+        /* Copy the event to avoid deadlock if we publish the event
+         * now. This happens because fmt_event may trigger restart
+         * while we're still holding the jb_mutex.
+         */
+        pj_memcpy(&stream->fmt_event, event, sizeof(*event));
+        return PJ_SUCCESS;
 
-	case PJMEDIA_EVENT_KEYFRAME_MISSING:
-	    /* Republish this event later from get_frame(). */
-	    pj_memcpy(&stream->miss_keyframe_event, event, sizeof(*event));
-	    return PJ_SUCCESS;
+    case PJMEDIA_EVENT_KEYFRAME_MISSING:
+        /* Republish this event later from get_frame(). */
+        pj_memcpy(&stream->miss_keyframe_event, event, sizeof(*event));
+        return PJ_SUCCESS;
 
-	default:
-	    break;
-	}
+    default:
+        break;
+    }
     }
 
     return pjmedia_event_publish(NULL, stream, event, 0);
@@ -651,20 +587,20 @@ static void send_keep_alive_packet(pjmedia_vid_stream *stream)
     int pkt_len;
 
     TRC_((channel->port.info.name.ptr,
-	  "Sending keep-alive (RTCP and empty RTP)"));
+      "Sending keep-alive (RTCP and empty RTP)"));
 
     /* Send RTP */
     status = pjmedia_rtp_encode_rtp( &stream->enc->rtp,
-				     stream->enc->pt, 0,
-				     1,
-				     0,
-				     (const void**)&pkt,
-				     &pkt_len);
+                     stream->enc->pt, 0,
+                     1,
+                     0,
+                     (const void**)&pkt,
+                     &pkt_len);
     pj_assert(status == PJ_SUCCESS);
 
     pj_memcpy(stream->enc->buf, pkt, pkt_len);
     pjmedia_transport_send_rtp(stream->transport, stream->enc->buf,
-			       pkt_len);
+                   pkt_len);
 
     /* Send RTCP */
     send_rtcp(stream, PJ_TRUE, PJ_FALSE);
@@ -680,17 +616,17 @@ static void send_keep_alive_packet(pjmedia_vid_stream *stream)
     const pj_str_t str_ka = PJMEDIA_STREAM_KA_USER_PKT;
 
     TRC_((channel->port.info.name.ptr,
-	  "Sending keep-alive (custom RTP/RTCP packets)"));
+      "Sending keep-alive (custom RTP/RTCP packets)"));
 
     /* Send to RTP port */
     pj_memcpy(stream->enc->buf, str_ka.ptr, str_ka.slen);
     pkt_len = str_ka.slen;
     pjmedia_transport_send_rtp(stream->transport, stream->enc->buf,
-			       pkt_len);
+                   pkt_len);
 
     /* Send to RTCP port */
     pjmedia_transport_send_rtcp(stream->transport, stream->enc->buf,
-			        pkt_len);
+                    pkt_len);
 
 #else
 
@@ -698,12 +634,12 @@ static void send_keep_alive_packet(pjmedia_vid_stream *stream)
 
 #endif
 }
-#endif	/* defined(PJMEDIA_STREAM_ENABLE_KA) */
+#endif  /* defined(PJMEDIA_STREAM_ENABLE_KA) */
 
 
 static pj_status_t send_rtcp(pjmedia_vid_stream *stream,
-			     pj_bool_t with_sdes,
-			     pj_bool_t with_bye)
+                 pj_bool_t with_sdes,
+                 pj_bool_t with_bye)
 {
     void *sr_rr_pkt;
     pj_uint8_t *pkt;
@@ -714,45 +650,45 @@ static pj_status_t send_rtcp(pjmedia_vid_stream *stream,
     pjmedia_rtcp_build_rtcp(&stream->rtcp, &sr_rr_pkt, &len);
 
     if (with_sdes || with_bye) {
-	pkt = (pj_uint8_t*) stream->out_rtcp_pkt;
-	pj_memcpy(pkt, sr_rr_pkt, len);
-	max_len = stream->out_rtcp_pkt_size;
+    pkt = (pj_uint8_t*) stream->out_rtcp_pkt;
+    pj_memcpy(pkt, sr_rr_pkt, len);
+    max_len = stream->out_rtcp_pkt_size;
     } else {
-	pkt = (pj_uint8_t*)sr_rr_pkt;
-	max_len = len;
+    pkt = (pj_uint8_t*)sr_rr_pkt;
+    max_len = len;
     }
 
     /* Build RTCP SDES packet */
     if (with_sdes) {
-	pjmedia_rtcp_sdes sdes;
-	pj_size_t sdes_len;
+    pjmedia_rtcp_sdes sdes;
+    pj_size_t sdes_len;
 
-	pj_bzero(&sdes, sizeof(sdes));
-	sdes.cname = stream->cname;
-	sdes_len = max_len - len;
-	status = pjmedia_rtcp_build_rtcp_sdes(&stream->rtcp, pkt+len,
-					      &sdes_len, &sdes);
-	if (status != PJ_SUCCESS) {
-	    PJ_PERROR(4,(stream->name.ptr, status,
-        			     "Error generating RTCP SDES"));
-	} else {
-	    len += (int)sdes_len;
-	}
+    pj_bzero(&sdes, sizeof(sdes));
+    sdes.cname = stream->cname;
+    sdes_len = max_len - len;
+    status = pjmedia_rtcp_build_rtcp_sdes(&stream->rtcp, pkt+len,
+                          &sdes_len, &sdes);
+    if (status != PJ_SUCCESS) {
+        PJ_PERROR(4,(stream->name.ptr, status,
+                         "Error generating RTCP SDES"));
+    } else {
+        len += (int)sdes_len;
+    }
     }
 
     /* Build RTCP BYE packet */
     if (with_bye) {
-	pj_size_t bye_len;
+    pj_size_t bye_len;
 
-	bye_len = max_len - len;
-	status = pjmedia_rtcp_build_rtcp_bye(&stream->rtcp, pkt+len,
-					     &bye_len, NULL);
-	if (status != PJ_SUCCESS) {
-	    PJ_PERROR(4,(stream->name.ptr, status,
-        			     "Error generating RTCP BYE"));
-	} else {
-	    len += (int)bye_len;
-	}
+    bye_len = max_len - len;
+    status = pjmedia_rtcp_build_rtcp_bye(&stream->rtcp, pkt+len,
+                         &bye_len, NULL);
+    if (status != PJ_SUCCESS) {
+        PJ_PERROR(4,(stream->name.ptr, status,
+                         "Error generating RTCP BYE"));
+    } else {
+        len += (int)bye_len;
+    }
     }
 
     /* Send! */
@@ -778,18 +714,18 @@ static void check_tx_rtcp(pjmedia_vid_stream *stream, pj_uint32_t timestamp)
 
     if (stream->rtcp_last_tx == 0) {
 
-	stream->rtcp_last_tx = timestamp;
+    stream->rtcp_last_tx = timestamp;
 
     } else if (timestamp - stream->rtcp_last_tx >= stream->rtcp_interval) {
-	pj_status_t status;
+    pj_status_t status;
 
-	status = send_rtcp(stream, !stream->rtcp_sdes_bye_disabled, PJ_FALSE);
-	if (status != PJ_SUCCESS) {
-	    PJ_PERROR(4,(stream->name.ptr, status,
-        		 "Error sending RTCP"));
-	}
+    status = send_rtcp(stream, !stream->rtcp_sdes_bye_disabled, PJ_FALSE);
+    if (status != PJ_SUCCESS) {
+        PJ_PERROR(4,(stream->name.ptr, status,
+                 "Error sending RTCP"));
+    }
 
-	stream->rtcp_last_tx = timestamp;
+    stream->rtcp_last_tx = timestamp;
     }
 }
 
@@ -801,19 +737,19 @@ static void dump_bin(const char *buf, unsigned len)
 
     PJ_LOG(3,(THIS_FILE, "begin dump"));
     for (i=0; i<len; ++i) {
-	int j;
-	char bits[9];
-	unsigned val = buf[i] & 0xFF;
+    int j;
+    char bits[9];
+    unsigned val = buf[i] & 0xFF;
 
-	bits[8] = '\0';
-	for (j=0; j<8; ++j) {
-	    if (val & (1 << (7-j)))
-		bits[j] = '1';
-	    else
-		bits[j] = '0';
-	}
+    bits[8] = '\0';
+    for (j=0; j<8; ++j) {
+        if (val & (1 << (7-j)))
+        bits[j] = '1';
+        else
+        bits[j] = '0';
+    }
 
-	PJ_LOG(3,(THIS_FILE, "%2d %s [%d]", i, bits, val));
+    PJ_LOG(3,(THIS_FILE, "%2d %s [%d]", i, bits, val));
     }
     PJ_LOG(3,(THIS_FILE, "end dump"));
 }
@@ -839,87 +775,87 @@ static void on_rx_rtp( pjmedia_tp_cb_param *param)
 
     /* Check for errors */
     if (bytes_read < 0) {
-	status = (pj_status_t)-bytes_read;
-	if (status == PJ_STATUS_FROM_OS(OSERR_EWOULDBLOCK)) {
-	    return;
-	}
-	if (stream->rtp_rx_last_err != status) {
-	    char errmsg[PJ_ERR_MSG_SIZE];
-	    pj_strerror(status, errmsg, sizeof(errmsg));
-	    PJ_LOG(4,(channel->port.info.name.ptr,
-		      "Unable to receive RTP packet, recv() returned %d: %s",
-		      status, errmsg));
-	    stream->rtp_rx_last_err = status;
-	}
-	return;
+    status = (pj_status_t)-bytes_read;
+    if (status == PJ_STATUS_FROM_OS(OSERR_EWOULDBLOCK)) {
+        return;
+    }
+    if (stream->rtp_rx_last_err != status) {
+        char errmsg[PJ_ERR_MSG_SIZE];
+        pj_strerror(status, errmsg, sizeof(errmsg));
+        PJ_LOG(4,(channel->port.info.name.ptr,
+              "Unable to receive RTP packet, recv() returned %d: %s",
+              status, errmsg));
+        stream->rtp_rx_last_err = status;
+    }
+    return;
     } else {
-	stream->rtp_rx_last_err = PJ_SUCCESS;
+    stream->rtp_rx_last_err = PJ_SUCCESS;
     }
 
     /* Ignore keep-alive packets */
     if (bytes_read < (pj_ssize_t) sizeof(pjmedia_rtp_hdr))
-	return;
+    return;
 
     /* Update RTP and RTCP session. */
     status = pjmedia_rtp_decode_rtp(&channel->rtp, pkt, (int)bytes_read,
-				    &hdr, &payload, &payloadlen);
+                    &hdr, &payload, &payloadlen);
     if (status != PJ_SUCCESS) {
-	LOGERR_((channel->port.info.name.ptr, "RTP decode error", status));
-	stream->rtcp.stat.rx.discard++;
-	return;
+    LOGERR_((channel->port.info.name.ptr, "RTP decode error", status));
+    stream->rtcp.stat.rx.discard++;
+    return;
     }
 
     /* Check if multiplexing is allowed and the payload indicates RTCP. */
     if (stream->info.rtcp_mux && hdr->pt >= 64 && hdr->pt <= 95) {
-    	on_rx_rtcp(stream, pkt, bytes_read);
-    	return;
+        on_rx_rtcp(stream, pkt, bytes_read);
+        return;
     }
 
     /* Ignore the packet if decoder is paused */
     if (channel->paused)
-	goto on_return;
+    goto on_return;
 
     /* Update RTP session (also checks if RTP session can accept
      * the incoming packet.
      */
     pjmedia_rtp_session_update2(&channel->rtp, hdr, &seq_st, PJ_TRUE);
     if (seq_st.status.value) {
-	TRC_  ((channel->port.info.name.ptr,
-		"RTP status: badpt=%d, badssrc=%d, dup=%d, "
-		"outorder=%d, probation=%d, restart=%d",
-		seq_st.status.flag.badpt,
-		seq_st.status.flag.badssrc,
-		seq_st.status.flag.dup,
-		seq_st.status.flag.outorder,
-		seq_st.status.flag.probation,
-		seq_st.status.flag.restart));
+    TRC_  ((channel->port.info.name.ptr,
+        "RTP status: badpt=%d, badssrc=%d, dup=%d, "
+        "outorder=%d, probation=%d, restart=%d",
+        seq_st.status.flag.badpt,
+        seq_st.status.flag.badssrc,
+        seq_st.status.flag.dup,
+        seq_st.status.flag.outorder,
+        seq_st.status.flag.probation,
+        seq_st.status.flag.restart));
 
-	if (seq_st.status.flag.badpt) {
-	    PJ_LOG(4,(channel->port.info.name.ptr,
-		      "Bad RTP pt %d (expecting %d)",
-		      hdr->pt, channel->rtp.out_pt));
-	}
+    if (seq_st.status.flag.badpt) {
+        PJ_LOG(4,(channel->port.info.name.ptr,
+              "Bad RTP pt %d (expecting %d)",
+              hdr->pt, channel->rtp.out_pt));
+    }
 
-	if (!stream->info.has_rem_ssrc && seq_st.status.flag.badssrc) {
-	    PJ_LOG(4,(channel->port.info.name.ptr,
-		      "Changed RTP peer SSRC %d (previously %d)",
-		      channel->rtp.peer_ssrc, stream->rtcp.peer_ssrc));
-	    stream->rtcp.peer_ssrc = channel->rtp.peer_ssrc;
-	}
+    if (!stream->info.has_rem_ssrc && seq_st.status.flag.badssrc) {
+        PJ_LOG(4,(channel->port.info.name.ptr,
+              "Changed RTP peer SSRC %d (previously %d)",
+              channel->rtp.peer_ssrc, stream->rtcp.peer_ssrc));
+        stream->rtcp.peer_ssrc = channel->rtp.peer_ssrc;
+    }
 
 
     }
 
     /* Skip bad RTP packet */
     if (seq_st.status.flag.bad) {
-	pkt_discarded = PJ_TRUE;
-	goto on_return;
+    pkt_discarded = PJ_TRUE;
+    goto on_return;
     }
 
     /* Ignore if payloadlen is zero */
     if (payloadlen == 0) {
-	pkt_discarded = PJ_TRUE;
-	goto on_return;
+    pkt_discarded = PJ_TRUE;
+    goto on_return;
     }
 
     /* See if source address of RTP packet is different than the
@@ -928,54 +864,54 @@ static void on_rx_rtp( pjmedia_tp_cb_param *param)
      */
     if (param->src_addr) {
         pj_bool_t badssrc = (stream->info.has_rem_ssrc &&
-        		     seq_st.status.flag.badssrc);
+                     seq_st.status.flag.badssrc);
 
-	if (pj_sockaddr_cmp(&stream->rem_rtp_addr, param->src_addr) == 0) {
-	    /* We're still receiving from rem_rtp_addr. */
-	    stream->rtp_src_cnt = 0;
-	    stream->rem_rtp_flag = badssrc? 2: 1;
-	} else {
-	    stream->rtp_src_cnt++;
+    if (pj_sockaddr_cmp(&stream->rem_rtp_addr, param->src_addr) == 0) {
+        /* We're still receiving from rem_rtp_addr. */
+        stream->rtp_src_cnt = 0;
+        stream->rem_rtp_flag = badssrc? 2: 1;
+    } else {
+        stream->rtp_src_cnt++;
 
-	    if (stream->rtp_src_cnt < PJMEDIA_RTP_NAT_PROBATION_CNT) {
-	    	if (stream->rem_rtp_flag == 1 ||
-	    	    (stream->rem_rtp_flag == 2 && badssrc))
-	    	{
-		    /* Only discard if:
-		     * - we have ever received packet with good ssrc from
-		     *   remote address (rem_rtp_addr), or
-		     * - we have ever received packet with bad ssrc from
-		     *   remote address and this packet also has bad ssrc.
-		     */
-	    	    pkt_discarded = PJ_TRUE;
-	    	    goto on_return;
-	    	}
-	    	if (stream->info.has_rem_ssrc && !seq_st.status.flag.badssrc
-	    	    && stream->rem_rtp_flag != 1)
-	    	{
-	    	    /* Immediately switch if we receive packet with the
-	    	     * correct ssrc AND we never receive packets with
-	    	     * good ssrc from rem_rtp_addr.
-	    	     */
-	    	    param->rem_switch = PJ_TRUE;
-	    	}
-	    } else {
-	        /* Switch. We no longer receive packets from rem_rtp_addr. */
-	        param->rem_switch = PJ_TRUE;
-	    }
+        if (stream->rtp_src_cnt < PJMEDIA_RTP_NAT_PROBATION_CNT) {
+            if (stream->rem_rtp_flag == 1 ||
+                (stream->rem_rtp_flag == 2 && badssrc))
+            {
+            /* Only discard if:
+             * - we have ever received packet with good ssrc from
+             *   remote address (rem_rtp_addr), or
+             * - we have ever received packet with bad ssrc from
+             *   remote address and this packet also has bad ssrc.
+             */
+                pkt_discarded = PJ_TRUE;
+                goto on_return;
+            }
+            if (stream->info.has_rem_ssrc && !seq_st.status.flag.badssrc
+                && stream->rem_rtp_flag != 1)
+            {
+                /* Immediately switch if we receive packet with the
+                 * correct ssrc AND we never receive packets with
+                 * good ssrc from rem_rtp_addr.
+                 */
+                param->rem_switch = PJ_TRUE;
+            }
+        } else {
+            /* Switch. We no longer receive packets from rem_rtp_addr. */
+            param->rem_switch = PJ_TRUE;
+        }
 
-	    if (param->rem_switch) {
-		/* Set remote RTP address to source address */
-		pj_sockaddr_cp(&stream->rem_rtp_addr, param->src_addr);
+        if (param->rem_switch) {
+        /* Set remote RTP address to source address */
+        pj_sockaddr_cp(&stream->rem_rtp_addr, param->src_addr);
 
-		/* Reset counter and flag */
-		stream->rtp_src_cnt = 0;
-		stream->rem_rtp_flag = badssrc? 2: 1;
+        /* Reset counter and flag */
+        stream->rtp_src_cnt = 0;
+        stream->rem_rtp_flag = badssrc? 2: 1;
 
-		/* Update RTCP peer ssrc */
-	    	stream->rtcp.peer_ssrc = pj_ntohl(hdr->ssrc);
-	    }
-	}
+        /* Update RTCP peer ssrc */
+            stream->rtcp.peer_ssrc = pj_ntohl(hdr->ssrc);
+        }
+    }
     }
 
     pj_mutex_lock( stream->jb_mutex );
@@ -984,51 +920,51 @@ static void on_rx_rtp( pjmedia_tp_cb_param *param)
      * decode them if so. More thorough check will be done in decode_frame().
      */
     if ((pj_ntohl(hdr->ts) != stream->dec_frame.timestamp.u32.lo) || hdr->m) {
-	if (PJMEDIA_VID_STREAM_SKIP_PACKETS_TO_REDUCE_LATENCY) {
-	    /* Always decode whenever we have picture in jb and
-	     * overwrite already decoded picture if necessary
-	     */
-	    pj_size_t old_size = stream->dec_frame.size;
+    if (PJMEDIA_VID_STREAM_SKIP_PACKETS_TO_REDUCE_LATENCY) {
+        /* Always decode whenever we have picture in jb and
+         * overwrite already decoded picture if necessary
+         */
+        pj_size_t old_size = stream->dec_frame.size;
 
-	    stream->dec_frame.size = stream->dec_max_size;
-	    if (decode_frame(stream, &stream->dec_frame) != PJ_SUCCESS) {
-		stream->dec_frame.size = old_size;
-	    }
-	} else {
-	    /* Only decode if we don't already have decoded one,
-	     * unless the jb is full.
-	     */
-	    pj_bool_t can_decode = PJ_FALSE;
+        stream->dec_frame.size = stream->dec_max_size;
+        if (decode_frame(stream, &stream->dec_frame) != PJ_SUCCESS) {
+        stream->dec_frame.size = old_size;
+        }
+    } else {
+        /* Only decode if we don't already have decoded one,
+         * unless the jb is full.
+         */
+        pj_bool_t can_decode = PJ_FALSE;
 
-	    if (pjmedia_jbuf_is_full(stream->jb)) {
-		can_decode = PJ_TRUE;
-	    }
-	    else if (stream->dec_frame.size == 0) {
-		can_decode = PJ_TRUE;
-	    }
+        if (pjmedia_jbuf_is_full(stream->jb)) {
+        can_decode = PJ_TRUE;
+        }
+        else if (stream->dec_frame.size == 0) {
+        can_decode = PJ_TRUE;
+        }
 
-	    if (can_decode) {
-		stream->dec_frame.size = stream->dec_max_size;
-		if (decode_frame(stream, &stream->dec_frame) != PJ_SUCCESS) {
-		    stream->dec_frame.size = 0;
-		}
-	    }
-	}
+        if (can_decode) {
+        stream->dec_frame.size = stream->dec_max_size;
+        if (decode_frame(stream, &stream->dec_frame) != PJ_SUCCESS) {
+            stream->dec_frame.size = 0;
+        }
+        }
+    }
     }
 
     /* Put "good" packet to jitter buffer, or reset the jitter buffer
      * when RTP session is restarted.
      */
     if (seq_st.status.flag.restart) {
-	status = pjmedia_jbuf_reset(stream->jb);
-	PJ_LOG(4,(channel->port.info.name.ptr, "Jitter buffer reset"));
+    status = pjmedia_jbuf_reset(stream->jb);
+    PJ_LOG(4,(channel->port.info.name.ptr, "Jitter buffer reset"));
     } else {
-	/* Just put the payload into jitter buffer */
-	pjmedia_jbuf_put_frame3(stream->jb, payload, payloadlen, 0,
-				pj_ntohs(hdr->seq), pj_ntohl(hdr->ts), NULL);
+    /* Just put the payload into jitter buffer */
+    pjmedia_jbuf_put_frame3(stream->jb, payload, payloadlen, 0,
+                pj_ntohs(hdr->seq), pj_ntohl(hdr->ts), NULL);
 
 #if TRACE_JB
-	trace_jb_put(stream, hdr, payloadlen, count);
+    trace_jb_put(stream, hdr, payloadlen, count);
 #endif
 
     }
@@ -1040,34 +976,34 @@ static void on_rx_rtp( pjmedia_tp_cb_param *param)
      * because otherwise check_tx_rtcp() will be handled by put_frame()
      */
     if (stream->dir == PJMEDIA_DIR_DECODING) {
-	check_tx_rtcp(stream, pj_ntohl(hdr->ts));
+    check_tx_rtcp(stream, pj_ntohl(hdr->ts));
     }
 
     if (status != 0) {
-	LOGERR_((channel->port.info.name.ptr, "Jitter buffer put() error",
-		status));
-	pkt_discarded = PJ_TRUE;
-	goto on_return;
+    LOGERR_((channel->port.info.name.ptr, "Jitter buffer put() error",
+        status));
+    pkt_discarded = PJ_TRUE;
+    goto on_return;
     }
 
 on_return:
     /* Update RTCP session */
     if (stream->rtcp.peer_ssrc == 0)
-	stream->rtcp.peer_ssrc = channel->rtp.peer_ssrc;
+    stream->rtcp.peer_ssrc = channel->rtp.peer_ssrc;
 
     pjmedia_rtcp_rx_rtp2(&stream->rtcp, pj_ntohs(hdr->seq),
-			 pj_ntohl(hdr->ts), payloadlen, pkt_discarded);
+             pj_ntohl(hdr->ts), payloadlen, pkt_discarded);
 
     /* Send RTCP RR and SDES after we receive some RTP packets */
     if (stream->rtcp.received >= 10 && !stream->initial_rr) {
-	status = send_rtcp(stream, !stream->rtcp_sdes_bye_disabled,
-			   PJ_FALSE);
+    status = send_rtcp(stream, !stream->rtcp_sdes_bye_disabled,
+               PJ_FALSE);
         if (status != PJ_SUCCESS) {
             PJ_PERROR(4,(stream->name.ptr, status,
-            	     "Error sending initial RTCP RR"));
-	} else {
-	    stream->initial_rr = PJ_TRUE;
-	}
+                     "Error sending initial RTCP RR"));
+    } else {
+        stream->initial_rr = PJ_TRUE;
+    }
     }
 }
 
@@ -1084,11 +1020,11 @@ static void on_rx_rtcp( void *data,
 
     /* Check for errors */
     if (bytes_read < 0) {
-	if (bytes_read != -PJ_STATUS_FROM_OS(OSERR_EWOULDBLOCK)) {
-	    LOGERR_((stream->cname.ptr, "RTCP recv() error",
-		    (pj_status_t)-bytes_read));
-	}
-	return;
+    if (bytes_read != -PJ_STATUS_FROM_OS(OSERR_EWOULDBLOCK)) {
+        LOGERR_((stream->cname.ptr, "RTCP recv() error",
+            (pj_status_t)-bytes_read));
+    }
+    return;
     }
 
     pjmedia_rtcp_rx_rtcp(&stream->rtcp, pkt, bytes_read);
@@ -1155,20 +1091,18 @@ static pj_status_t put_frame(pjmedia_port *port,
     frame_out.size = 0;
 
     /* Check if need to send keyframe. */
-    if (stream->num_keyframe && (pj_cmp_timestamp(&null_ts, &stream->last_keyframe_tx) != 0))
-    {
-     unsigned elapse_time;
-     pj_timestamp now;
+    if (stream->num_keyframe && (pj_cmp_timestamp(&null_ts, &stream->last_keyframe_tx) != 0)) {
+        unsigned elapse_time;
+        pj_timestamp now;
 
-     pj_get_timestamp(&now);
+        pj_get_timestamp(&now);
 
-     elapse_time = pj_elapsed_msec(&stream->last_keyframe_tx, &now);
+        elapse_time = pj_elapsed_msec(&stream->last_keyframe_tx, &now);
 
-     if (elapse_time > stream->info.sk_cfg.interval)
-     {
-         stream->force_keyframe = PJ_TRUE;
-         --stream->num_keyframe;
-     }
+        if (elapse_time > stream->info.sk_cfg.interval) {
+            stream->force_keyframe = PJ_TRUE;
+            --stream->num_keyframe;
+        }
     }
 
     /* Init encoding option */
@@ -1177,9 +1111,6 @@ static pj_status_t put_frame(pjmedia_port *port,
         /* Force encoder to generate keyframe */
         enc_opt.force_keyframe = PJ_TRUE;
         stream->force_keyframe = PJ_FALSE;
-        // HI_S32 HI_MPI_VENC_RequestIDR(VENC_CHN VeChn, HI_BOOL bInstant);
-        // HI_S32 s32Ret = HI_MPI_VENC_RequestIDR(0, 0);
-//        HI_S32 s32Ret = HI_MPI_VENC_RequestIDR(0, 1);
         HI_S32 s32Ret = HI_MPI_VENC_RequestIDR(0);
         if (HI_SUCCESS != s32Ret) {
             PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_RequestIDR failed with %#x!", __FUNCTION__, s32Ret));
@@ -1360,142 +1291,142 @@ static pj_status_t decode_frame(pjmedia_vid_stream *stream,
 
     /* Check if we got a decodable frame */
     for (cnt=0; ; ++cnt) {
-	char ptype;
-	pj_uint32_t ts;
-	int seq;
+    char ptype;
+    pj_uint32_t ts;
+    int seq;
 
-	/* Peek frame from jitter buffer. */
-	pjmedia_jbuf_peek_frame(stream->jb, cnt, NULL, NULL,
-				&ptype, NULL, &ts, &seq);
-	if (ptype == PJMEDIA_JB_NORMAL_FRAME) {
-	    if (last_ts == 0) {
-		last_ts = ts;
-		frm_first_seq = seq;
-	    }
-	    if (ts != last_ts) {
-		got_frame = PJ_TRUE;
-		break;
-	    }
-	    frm_last_seq = seq;
-	} else if (ptype == PJMEDIA_JB_ZERO_EMPTY_FRAME) {
-	    /* No more packet in the jitter buffer */
-	    break;
-	}
+    /* Peek frame from jitter buffer. */
+    pjmedia_jbuf_peek_frame(stream->jb, cnt, NULL, NULL,
+                &ptype, NULL, &ts, &seq);
+    if (ptype == PJMEDIA_JB_NORMAL_FRAME) {
+        if (last_ts == 0) {
+        last_ts = ts;
+        frm_first_seq = seq;
+        }
+        if (ts != last_ts) {
+        got_frame = PJ_TRUE;
+        break;
+        }
+        frm_last_seq = seq;
+    } else if (ptype == PJMEDIA_JB_ZERO_EMPTY_FRAME) {
+        /* No more packet in the jitter buffer */
+        break;
+    }
     }
 
     if (got_frame) {
-	unsigned i;
+    unsigned i;
 
-	/* Generate frame bitstream from the payload */
-	if (cnt > stream->rx_frame_cnt) {
-	    PJ_LOG(1,(channel->port.info.name.ptr,
-		      "Discarding %u frames because array is full!",
-		      cnt - stream->rx_frame_cnt));
-	    pjmedia_jbuf_remove_frame(stream->jb, cnt - stream->rx_frame_cnt);
-	    cnt = stream->rx_frame_cnt;
-	}
+    /* Generate frame bitstream from the payload */
+    if (cnt > stream->rx_frame_cnt) {
+        PJ_LOG(1,(channel->port.info.name.ptr,
+              "Discarding %u frames because array is full!",
+              cnt - stream->rx_frame_cnt));
+        pjmedia_jbuf_remove_frame(stream->jb, cnt - stream->rx_frame_cnt);
+        cnt = stream->rx_frame_cnt;
+    }
 
-	for (i = 0; i < cnt; ++i) {
-	    char ptype;
+    for (i = 0; i < cnt; ++i) {
+        char ptype;
 
-	    stream->rx_frames[i].type = PJMEDIA_FRAME_TYPE_VIDEO;
-	    stream->rx_frames[i].timestamp.u64 = last_ts;
-	    stream->rx_frames[i].bit_info = 0;
+        stream->rx_frames[i].type = PJMEDIA_FRAME_TYPE_VIDEO;
+        stream->rx_frames[i].timestamp.u64 = last_ts;
+        stream->rx_frames[i].bit_info = 0;
 
-	    /* We use jbuf_peek_frame() as it will returns the pointer of
-	     * the payload (no buffer and memcpy needed), just as we need.
-	     */
-	    pjmedia_jbuf_peek_frame(stream->jb, i,
-				    (const void**)&stream->rx_frames[i].buf,
-				    &stream->rx_frames[i].size, &ptype,
-				    NULL, NULL, NULL);
+        /* We use jbuf_peek_frame() as it will returns the pointer of
+         * the payload (no buffer and memcpy needed), just as we need.
+         */
+        pjmedia_jbuf_peek_frame(stream->jb, i,
+                    (const void**)&stream->rx_frames[i].buf,
+                    &stream->rx_frames[i].size, &ptype,
+                    NULL, NULL, NULL);
 
-	    if (ptype != PJMEDIA_JB_NORMAL_FRAME) {
-		/* Packet lost, must set payload to NULL and keep going */
-		stream->rx_frames[i].buf = NULL;
-		stream->rx_frames[i].size = 0;
-		stream->rx_frames[i].type = PJMEDIA_FRAME_TYPE_NONE;
-		continue;
-	    }
-	}
+        if (ptype != PJMEDIA_JB_NORMAL_FRAME) {
+        /* Packet lost, must set payload to NULL and keep going */
+        stream->rx_frames[i].buf = NULL;
+        stream->rx_frames[i].size = 0;
+        stream->rx_frames[i].type = PJMEDIA_FRAME_TYPE_NONE;
+        continue;
+        }
+    }
 
-	/* Decode */
-	status = pjmedia_vid_codec_decode(stream->codec, cnt,
-	                                  stream->rx_frames,
-	                                  (unsigned)frame->size, frame);
-	if (status != PJ_SUCCESS) {
-	    LOGERR_((channel->port.info.name.ptr, "codec decode() error",
-		     status));
-	    frame->type = PJMEDIA_FRAME_TYPE_NONE;
-	    frame->size = 0;
-	}
+    /* Decode */
+    status = pjmedia_vid_codec_decode(stream->codec, cnt,
+                                      stream->rx_frames,
+                                      (unsigned)frame->size, frame);
+    if (status != PJ_SUCCESS) {
+        LOGERR_((channel->port.info.name.ptr, "codec decode() error",
+             status));
+        frame->type = PJMEDIA_FRAME_TYPE_NONE;
+        frame->size = 0;
+    }
 
-	pjmedia_jbuf_remove_frame(stream->jb, cnt);
+    pjmedia_jbuf_remove_frame(stream->jb, cnt);
     }
 
     /* Learn remote frame rate after successful decoding */
     if (frame->type == PJMEDIA_FRAME_TYPE_VIDEO && frame->size)
     {
-	/* Only check remote frame rate when timestamp is not wrapping and
-	 * sequence is increased by 1.
-	 */
-	if (last_ts > stream->last_dec_ts &&
-	    frm_first_seq - stream->last_dec_seq == 1)
-	{
-	    pj_uint32_t ts_diff;
-	    pjmedia_video_format_detail *vfd;
+    /* Only check remote frame rate when timestamp is not wrapping and
+     * sequence is increased by 1.
+     */
+    if (last_ts > stream->last_dec_ts &&
+        frm_first_seq - stream->last_dec_seq == 1)
+    {
+        pj_uint32_t ts_diff;
+        pjmedia_video_format_detail *vfd;
 
-	    ts_diff = last_ts - stream->last_dec_ts;
-	    vfd = pjmedia_format_get_video_format_detail(
-				    &channel->port.info.fmt, PJ_TRUE);
-	    if (stream->info.codec_info.clock_rate * vfd->fps.denum !=
-		vfd->fps.num * ts_diff)
-	    {
-		/* Frame rate changed, update decoding port info */
-		if (stream->info.codec_info.clock_rate % ts_diff == 0) {
-		    vfd->fps.num = stream->info.codec_info.clock_rate/ts_diff;
-		    vfd->fps.denum = 1;
-		} else {
-		    vfd->fps.num = stream->info.codec_info.clock_rate;
-		    vfd->fps.denum = ts_diff;
-		}
+        ts_diff = last_ts - stream->last_dec_ts;
+        vfd = pjmedia_format_get_video_format_detail(
+                    &channel->port.info.fmt, PJ_TRUE);
+        if (stream->info.codec_info.clock_rate * vfd->fps.denum !=
+        vfd->fps.num * ts_diff)
+        {
+        /* Frame rate changed, update decoding port info */
+        if (stream->info.codec_info.clock_rate % ts_diff == 0) {
+            vfd->fps.num = stream->info.codec_info.clock_rate/ts_diff;
+            vfd->fps.denum = 1;
+        } else {
+            vfd->fps.num = stream->info.codec_info.clock_rate;
+            vfd->fps.denum = ts_diff;
+        }
 
-		/* Update stream info */
-		stream->info.codec_param->dec_fmt.det.vid.fps = vfd->fps;
+        /* Update stream info */
+        stream->info.codec_param->dec_fmt.det.vid.fps = vfd->fps;
 
-		/* Publish PJMEDIA_EVENT_FMT_CHANGED event if frame rate
-		 * increased and not exceeding 100fps.
-		 */
-		if (vfd->fps.num/vfd->fps.denum <= 100 &&
-		    vfd->fps.num * stream->dec_max_fps.denum >
-		    stream->dec_max_fps.num * vfd->fps.denum)
-		{
-		    pjmedia_event *event = &stream->fmt_event;
+        /* Publish PJMEDIA_EVENT_FMT_CHANGED event if frame rate
+         * increased and not exceeding 100fps.
+         */
+        if (vfd->fps.num/vfd->fps.denum <= 100 &&
+            vfd->fps.num * stream->dec_max_fps.denum >
+            stream->dec_max_fps.num * vfd->fps.denum)
+        {
+            pjmedia_event *event = &stream->fmt_event;
 
-		    /* Update max fps of decoding dir */
-		    stream->dec_max_fps = vfd->fps;
+            /* Update max fps of decoding dir */
+            stream->dec_max_fps = vfd->fps;
 
-		    /* Use the buffered format changed event:
-		     * - just update the framerate if there is pending event,
-		     * - otherwise, init the whole event.
-		     */
-		    if (stream->fmt_event.type != PJMEDIA_EVENT_NONE) {
-			event->data.fmt_changed.new_fmt.det.vid.fps = vfd->fps;
-		    } else {
-			pjmedia_event_init(event, PJMEDIA_EVENT_FMT_CHANGED,
-					   &frame->timestamp, stream);
-			event->data.fmt_changed.dir = PJMEDIA_DIR_DECODING;
-			pj_memcpy(&event->data.fmt_changed.new_fmt,
-				  &stream->info.codec_param->dec_fmt,
-				  sizeof(pjmedia_format));
-		    }
-		}
-	    }
-	}
+            /* Use the buffered format changed event:
+             * - just update the framerate if there is pending event,
+             * - otherwise, init the whole event.
+             */
+            if (stream->fmt_event.type != PJMEDIA_EVENT_NONE) {
+            event->data.fmt_changed.new_fmt.det.vid.fps = vfd->fps;
+            } else {
+            pjmedia_event_init(event, PJMEDIA_EVENT_FMT_CHANGED,
+                       &frame->timestamp, stream);
+            event->data.fmt_changed.dir = PJMEDIA_DIR_DECODING;
+            pj_memcpy(&event->data.fmt_changed.new_fmt,
+                  &stream->info.codec_param->dec_fmt,
+                  sizeof(pjmedia_format));
+            }
+        }
+        }
+    }
 
-	/* Update last frame seq and timestamp */
-	stream->last_dec_seq = frm_last_seq;
-	stream->last_dec_ts = last_ts;
+    /* Update last frame seq and timestamp */
+    stream->last_dec_seq = frm_last_seq;
+    stream->last_dec_ts = last_ts;
     }
 
     return got_frame ? PJ_SUCCESS : PJ_ENOTFOUND;
@@ -1510,9 +1441,9 @@ static pj_status_t get_frame(pjmedia_port *port,
 
     /* Return no frame is channel is paused */
     if (channel->paused) {
-	frame->type = PJMEDIA_FRAME_TYPE_NONE;
-	frame->size = 0;
-	return PJ_SUCCESS;
+    frame->type = PJMEDIA_FRAME_TYPE_NONE;
+    frame->size = 0;
+    return PJ_SUCCESS;
     }
 
     /* Report pending events. Do not publish the event while holding the
@@ -1521,68 +1452,68 @@ static pj_status_t get_frame(pjmedia_port *port,
      * would only occur once during the start of the media.
      */
     if (stream->fmt_event.type != PJMEDIA_EVENT_NONE) {
-	pjmedia_event_fmt_changed_data *fmt_chg_data;
+    pjmedia_event_fmt_changed_data *fmt_chg_data;
 
-	fmt_chg_data = &stream->fmt_event.data.fmt_changed;
+    fmt_chg_data = &stream->fmt_event.data.fmt_changed;
 
-	/* Update stream info and decoding channel port info */
-	if (fmt_chg_data->dir == PJMEDIA_DIR_DECODING) {
-	    pjmedia_format_copy(&stream->info.codec_param->dec_fmt,
-				&fmt_chg_data->new_fmt);
-	    pjmedia_format_copy(&stream->dec->port.info.fmt,
-				&fmt_chg_data->new_fmt);
+    /* Update stream info and decoding channel port info */
+    if (fmt_chg_data->dir == PJMEDIA_DIR_DECODING) {
+        pjmedia_format_copy(&stream->info.codec_param->dec_fmt,
+                &fmt_chg_data->new_fmt);
+        pjmedia_format_copy(&stream->dec->port.info.fmt,
+                &fmt_chg_data->new_fmt);
 
-	    /* Override the framerate to be 1.5x higher in the event
-	     * for the renderer.
-	     */
-	    fmt_chg_data->new_fmt.det.vid.fps.num *= 3;
-	    fmt_chg_data->new_fmt.det.vid.fps.num /= 2;
-	} else {
-	    pjmedia_format_copy(&stream->info.codec_param->enc_fmt,
-				&fmt_chg_data->new_fmt);
-	    pjmedia_format_copy(&stream->enc->port.info.fmt,
-				&fmt_chg_data->new_fmt);
-	}
+        /* Override the framerate to be 1.5x higher in the event
+         * for the renderer.
+         */
+        fmt_chg_data->new_fmt.det.vid.fps.num *= 3;
+        fmt_chg_data->new_fmt.det.vid.fps.num /= 2;
+    } else {
+        pjmedia_format_copy(&stream->info.codec_param->enc_fmt,
+                &fmt_chg_data->new_fmt);
+        pjmedia_format_copy(&stream->enc->port.info.fmt,
+                &fmt_chg_data->new_fmt);
+    }
 
-	dump_port_info(fmt_chg_data->dir==PJMEDIA_DIR_DECODING ?
-			stream->dec : stream->enc,
-		       "changed");
+    dump_port_info(fmt_chg_data->dir==PJMEDIA_DIR_DECODING ?
+            stream->dec : stream->enc,
+               "changed");
 
-	pjmedia_event_publish(NULL, port, &stream->fmt_event, 0);
+    pjmedia_event_publish(NULL, port, &stream->fmt_event, 0);
 
-	stream->fmt_event.type = PJMEDIA_EVENT_NONE;
+    stream->fmt_event.type = PJMEDIA_EVENT_NONE;
     }
 
     if (stream->miss_keyframe_event.type != PJMEDIA_EVENT_NONE) {
-	pjmedia_event_publish(NULL, port, &stream->miss_keyframe_event,
-			      PJMEDIA_EVENT_PUBLISH_POST_EVENT);
-	stream->miss_keyframe_event.type = PJMEDIA_EVENT_NONE;
+    pjmedia_event_publish(NULL, port, &stream->miss_keyframe_event,
+                  PJMEDIA_EVENT_PUBLISH_POST_EVENT);
+    stream->miss_keyframe_event.type = PJMEDIA_EVENT_NONE;
     }
 
     pj_mutex_lock( stream->jb_mutex );
 
     if (stream->dec_frame.size == 0) {
-	/* Don't have frame in buffer, try to decode one */
-	if (decode_frame(stream, frame) != PJ_SUCCESS) {
-	    frame->type = PJMEDIA_FRAME_TYPE_NONE;
-	    frame->size = 0;
-	}
+    /* Don't have frame in buffer, try to decode one */
+    if (decode_frame(stream, frame) != PJ_SUCCESS) {
+        frame->type = PJMEDIA_FRAME_TYPE_NONE;
+        frame->size = 0;
+    }
     } else {
-	if (frame->size < stream->dec_frame.size) {
-	    PJ_LOG(4,(stream->dec->port.info.name.ptr,
-		      "Error: not enough buffer for decoded frame "
-		      "(supplied=%d, required=%d)",
-		      (int)frame->size, (int)stream->dec_frame.size));
-	    frame->type = PJMEDIA_FRAME_TYPE_NONE;
-	    frame->size = 0;
-	} else {
-	    frame->type = stream->dec_frame.type;
-	    frame->timestamp = stream->dec_frame.timestamp;
-	    frame->size = stream->dec_frame.size;
-	    pj_memcpy(frame->buf, stream->dec_frame.buf, frame->size);
-	}
+    if (frame->size < stream->dec_frame.size) {
+        PJ_LOG(4,(stream->dec->port.info.name.ptr,
+              "Error: not enough buffer for decoded frame "
+              "(supplied=%d, required=%d)",
+              (int)frame->size, (int)stream->dec_frame.size));
+        frame->type = PJMEDIA_FRAME_TYPE_NONE;
+        frame->size = 0;
+    } else {
+        frame->type = stream->dec_frame.type;
+        frame->timestamp = stream->dec_frame.timestamp;
+        frame->size = stream->dec_frame.size;
+        pj_memcpy(frame->buf, stream->dec_frame.buf, frame->size);
+    }
 
-	stream->dec_frame.size = 0;
+    stream->dec_frame.size = 0;
     }
 
     pj_mutex_unlock( stream->jb_mutex );
@@ -1606,19 +1537,13 @@ static int cv_thread_func (void *arg) {
     VENC_CHN_STAT_S stStat;
     VENC_STREAM_S stStream;
 
-
     vp->enc_frame_size =  0;
     vp->enc_processed = 0;
-    // unsigned             enc_frame_size =  0;
-    // unsigned             enc_processed = 0;
-    // pj_uint8_t          *enc_frame_whole;
+
     const pj_uint8_t *payload;
     pj_size_t payload_len;
     int result;
     pj_status_t status;
-
-
-
 
     VencChn = 0;
     s32Ret = HI_MPI_VENC_GetChnAttr(VencChn, &stVencChnAttr);
@@ -1641,20 +1566,12 @@ static int cv_thread_func (void *arg) {
         maxfd = VencFd[0];
     }
 
-
-
-
-
-
-
     while (!vp->thread_quit) {
-        // PJ_LOG(4, (THIS_FILE, "cv_thread_func: Processed"));
         FD_ZERO(&read_fds);
         FD_SET(VencFd[0], &read_fds);
         TimeoutVal.tv_sec  = 2;
         TimeoutVal.tv_usec = 0;
         s32Ret = select(maxfd + 1, &read_fds, NULL, NULL, &TimeoutVal);
-        // PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: select s32Ret=%d!", __FUNCTION__, s32Ret));
         if (s32Ret < 0) {
             PJ_LOG(4, (THIS_FILE, "%s: select failed!", __FUNCTION__));
             break;
@@ -1702,8 +1619,6 @@ static int cv_thread_func (void *arg) {
                      step 2.4 : call mpi to get one-frame stream
                     *******************************************************/
                     stStream.u32PackCount = stStat.u32CurPacks;
-                    // clock_t tStart = clock();
-                    // s32Ret = HI_MPI_VENC_GetStream(i, &stStream, 3600);
                     s32Ret = HI_MPI_VENC_GetStream(i, &stStream, HI_TRUE);
                     if (HI_SUCCESS != s32Ret) {
                         free(stStream.pstPack);
@@ -1712,200 +1627,44 @@ static int cv_thread_func (void *arg) {
                         vp->thread_quit = PJ_TRUE;
                         break;
                     }
-                    VENC_PACK_S*  pstData;
-
-//                    if (stStream.u32PackCount > 1) {
-//                        if (!vp->force_keyframe) {
-//                            break;
-//                        }
-//                    }
-                    
+                    VENC_PACK_S*  pstData;                    
                     if (stStream.u32PackCount > 1) {
 //                        PJ_LOG(4, (THIS_FILE, "%s: ======================KEYFRAME SENDED.", __FUNCTION__));
                     }
                     for (HI_S32 d = 0; d < stStream.u32PackCount; d++) {
-
                         pstData = &stStream.pstPack[d];
-                        if (pstData->DataType.enH264EType == H264E_NALU_PSLICE) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_PSLICE", __FUNCTION__));
-                        } else if (pstData->DataType.enH264EType == H264E_NALU_ISLICE) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_ISLICE", __FUNCTION__));
-                        } else if (pstData->DataType.enH264EType == H264E_NALU_SEI) {
-//                            if (vp->force_keyframe) {
-//                                break;
-//                            }
-//                            log_bytes1(pstData->pu8Addr[0], pstData->u32Len[0]);
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_SEI", __FUNCTION__));
-                        } else if (pstData->DataType.enH264EType == H264E_NALU_SPS) {
-//                            if (vp->force_keyframe) {
-//                                break;
-//                            }
-//                            log_bytes1(pstData->pu8Addr[0], pstData->u32Len[0]);
-//                            break;
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_SPS", __FUNCTION__));
-                        } else if (pstData->DataType.enH264EType == H264E_NALU_PPS) {
-//                            if (vp->force_keyframe) {
-//                                break;
-//                            }
-//                            log_bytes1(pstData->pu8Addr[0], pstData->u32Len[0]);
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_PPS", __FUNCTION__));
-                        }
-                        
-                        
-//                        H264E_NALU_PPS 00 00 00 01 68 ee 3c 80
-//                        H264E_NALU_SEI 00 00 00 01 06 e5 01 71 80
-//                        H264E_NALU_SPS 00 00 00 01 67 4d 00 1e 95 a8 28 0f 64
-                        
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_IPSLICE) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_IPSLICE", __FUNCTION__));
-//                        }
-//                        HI_U32 nal_size = pstData->u32Len-pstData->u32Offset;
+
                         HI_U32 nal_size = pstData->u32Len[0];
                         void *nal_address = pstData->pu8Addr[0];
-//                        void *nal_address = pstData->pu8Addr+pstData->u32Offset;
-                        // print_bytes(nal_address, nal_size);
-                        unsigned char *tbuf = (unsigned char *)pj_pool_calloc(vp->cv_pool, nal_size, sizeof(unsigned char));
-                        if(!tbuf ) {
-                            PJ_LOG(4, (THIS_FILE, "%s: Allocation tbuf failure.", __FUNCTION__));
-                            exit (1);
-                        }
-                        pj_memcpy(tbuf,
-                            nal_address,
-                            nal_size);
-
-                        // const unsigned char * const nal = nal_address;
-
-                        // PJ_LOG(4, (THIS_FILE, "%s: nal_size = %u", __FUNCTION__, nal_size));
-                        // PJ_LOG(4, (THIS_FILE, "%s: pstPack[d].u64PTS = %llu", __FUNCTION__, pstData->u64PTS));
-                        // vp->frame_ts.u64 = pstData->u64PTS;
-                        // memcpy(tmp+sz, nal_address, nal_size);
-                        // print_bytes(tmp, nal_size);
-                        // print_bytes(nal, nal_size);
-                        // print_bytes(nal_address, nal_size);
-                        // unsigned char nal_type = get_nal_type(nal, nal_size);
-                        // unsigned char nal_type = get_nal_type(nal_address, nal_size);
-                        // idr = PJ_FALSE;
-                        // sz = sz + nal_size;
                         vp->enc_processed = 0;
                         int first = 0;
-                        if (0) {
-                            while ((vp->enc_processed < nal_size) && (!vp->thread_quit)) {
-
-                                // PJ_LOG(4, (THIS_FILE, "%s: ===================================vp->thread_quit = %u",
-                                    // __FUNCTION__, vp->thread_quit));
-                                status = pjmedia_h264_packetize(vp->pktz,
-                                    tbuf,
-                                    nal_size,
-                                    &vp->enc_processed,
-                                    &payload, &payload_len
-                                );
-
-                                if (vp->enc_processed < nal_size) {
-                                    vp->has_more_data = PJ_TRUE;
-                                } else {
-                                    vp->has_more_data = PJ_FALSE;
-                                }
-
-
-                                // print_bytes(nal_address, nal_size);
-                                // print_bytes(payload, payload_len);
-
-                                if (status != PJ_SUCCESS) {
-                                    /* Reset */
-                                    vp->enc_frame_size = vp->enc_processed = 0;
-                                    // *has_more = (h264_passthrough_data->enc_processed <
-                                    //         h264_passthrough_data->enc_frame_size) ||
-                                    //     (h264_passthrough_data->ilayer < h264_passthrough_data->iLayerNum);
-
-                                    PJ_PERROR(3,(THIS_FILE, status, "pjmedia_h264_packetize() error"));
-                                    return status;
-                                }
-                                PJ_LOG(4, (THIS_FILE, "%s: enc_processed = %u of %u, payload_len = %u",
-                                    __FUNCTION__, vp->enc_processed, nal_size, payload_len));
-
-                                pjmedia_frame *frame = (pjmedia_frame *)pj_pool_calloc(vp->cv_pool, 1, sizeof(pjmedia_frame));
-                                if(!frame) {
-                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation frame failure.", __FUNCTION__));
-                                    exit (1);
-                                }
-                                frame->type = PJMEDIA_FRAME_TYPE_VIDEO;
-
-                                if (first == 1) {
-                                    frame->size = (pj_size_t)payload_len+4;
-                                } else {
-                                    frame->size = (pj_size_t)payload_len;
-                                }
-                                frame->timestamp.u64 = pstData->u64PTS;
-
-                                frame->buf = (unsigned char *)pj_pool_calloc(vp->cv_pool, frame->size, sizeof(unsigned char));
-                                if(!frame->buf ) {
-                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
-                                    exit (1);
-                                }
-                                if (first == 1) {
-                                    unsigned char a[4] = {0x00, 0x00, 0x00, 0x01};
-                                    pj_memcpy(frame->buf,
-                                        a,
-                                        4);
-                                    pj_memcpy(frame->buf+4,
-                                        payload,
-                                        frame->size);
-                                    first = 0;
-                                } else {
-                                    pj_memcpy(frame->buf,
-                                        payload,
-                                        frame->size);
-                                }
-
-
-                                if (stStream.u32PackCount > 1) {
-                                    frame->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-                                } else {
-                                    frame->bit_info = 0;
-                                }
-                                // print_bytes(nal_address, nal_size);
-                                // print_bytes(payload, payload_len);
-                                // print_bytes(frame->buf, frame->size);
-                                PJ_LOG(4, (THIS_FILE, "%s: frame->size = %u, payload_len = %u", __FUNCTION__, frame->size, payload_len));
-                                // status = pjmedia_port_put_frame(vp->client_port, frame);
-                                status = put_frame(&vp->enc->port, frame);
-                                if (status != PJ_SUCCESS)
-                                    return status;
-                                // PJ_LOG(4, (THIS_FILE, "%s: image_size=%u, frame_ts=%llu", __FUNCTION__, frame->size, vp->frame_ts.u64));
-                                // result = (*vp->vid_cb.capture_cb)(&vp->base, vp->user_data, frame);
-                                // pj_bzero(frame, sizeof(pjmedia_frame));
-
-                            }
-                        } else {
-                            pjmedia_frame *frame = (pjmedia_frame *)pj_pool_calloc(vp->cv_pool, 1, sizeof(pjmedia_frame));
-                            if(!frame) {
-                                PJ_LOG(4, (THIS_FILE, "%s: Allocation frame failure.", __FUNCTION__));
-                                exit (1);
-                            }
-                            frame->type = PJMEDIA_FRAME_TYPE_VIDEO;
-
-                            frame->size = (pj_size_t)nal_size;
-                            frame->timestamp.u64 = pstData->u64PTS;
-
-                            frame->buf = (unsigned char *)pj_pool_calloc(vp->cv_pool, frame->size, sizeof(unsigned char));
-                            if(!frame->buf ) {
-                                PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
-                                exit (1);
-                            }
-                            pj_memcpy(frame->buf,
-                                nal_address,
-                                frame->size);
-                            
-                            // PJ_LOG(4, (THIS_FILE, "%s: nal_size = %u, nal_address =%p", __FUNCTION__, frame->size, frame->buf));
-                            // status = pjmedia_port_put_frame(vp->client_port, frame);
-                            status = put_frame(&vp->enc->port, frame);
-                            if (status != PJ_SUCCESS)
-                                return status;
-                            // PJ_LOG(4, (THIS_FILE, "%s: image_size=%u, frame_ts=%llu", __FUNCTION__, frame->size, vp->frame_ts.u64));
-                            // result = (*vp->vid_cb.capture_cb)(&vp->base, vp->user_data, frame);
-                            // pj_bzero(frame, sizeof(pjmedia_frame));
+                        
+                        pjmedia_frame *frame = (pjmedia_frame*) calloc(1, sizeof(pjmedia_frame));
+                        if(!frame) {
+                            PJ_LOG(4, (THIS_FILE, "%s: Allocation frame failure.", __FUNCTION__));
+                            exit (1);
                         }
+                        frame->type = PJMEDIA_FRAME_TYPE_VIDEO;
 
+                        frame->size = (pj_size_t)nal_size;
+                        frame->timestamp.u64 = pstData->u64PTS;
+                        
+                        frame->buf = (unsigned char *) calloc(frame->size, sizeof(unsigned char));
+                        if(!frame->buf ) {
+                            PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
+                            exit (1);
+                        }
+                        pj_memcpy(frame->buf,
+                            nal_address,
+                            frame->size);
+                        status = put_frame(&vp->enc->port, frame);
+                        free(frame->buf);
+                        frame->buf = NULL;
+                        if (status != PJ_SUCCESS)
+                            return status;
+                        
+                        free (frame);
+                        frame = NULL;
                     }
 
                     /*******************************************************
@@ -1920,8 +1679,6 @@ static int cv_thread_func (void *arg) {
                         // pstData = NULL;
                         vp->thread_quit = PJ_TRUE;
                         break;
-                    } else {
-                        // PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_ReleaseStream[%d] SUCCESS", __FUNCTION__, i));
                     }
 
                     free(stStream.pstPack);
@@ -1931,8 +1688,6 @@ static int cv_thread_func (void *arg) {
                 }
             }
         }
-
-
     }
     vp->thread_quit = PJ_TRUE;
     vp->thread_exited = PJ_TRUE;
@@ -1944,11 +1699,11 @@ static int cv_thread_func (void *arg) {
  * Create media channel.
  */
 static pj_status_t create_channel( pj_pool_t *pool,
-				   pjmedia_vid_stream *stream,
-				   pjmedia_dir dir,
-				   unsigned pt,
-				   const pjmedia_vid_stream_info *info,
-				   pjmedia_vid_channel **p_channel)
+                   pjmedia_vid_stream *stream,
+                   pjmedia_dir dir,
+                   unsigned pt,
+                   const pjmedia_vid_stream_info *info,
+                   pjmedia_vid_channel **p_channel)
 {
     enum { M = 32 };
     pjmedia_vid_channel *channel;
@@ -1969,11 +1724,11 @@ static pj_status_t create_channel( pj_pool_t *pool,
 
     /* Init vars */
     if (dir==PJMEDIA_DIR_DECODING) {
-	type_name = "vstdec";
-	fmt = &info->codec_param->dec_fmt;
+    type_name = "vstdec";
+    fmt = &info->codec_param->dec_fmt;
     } else {
-	type_name = "vstenc";
-	fmt = &info->codec_param->enc_fmt;
+    type_name = "vstenc";
+    fmt = &info->codec_param->enc_fmt;
     }
     name.ptr = (char*) pj_pool_alloc(pool, M);
     name.slen = pj_ansi_snprintf(name.ptr, M, "%s%p", type_name, stream);
@@ -1987,59 +1742,59 @@ static pj_status_t create_channel( pj_pool_t *pool,
 
     /* Allocate buffer for outgoing packet. */
     if (dir == PJMEDIA_DIR_ENCODING) {
-	channel->buf_size = sizeof(pjmedia_rtp_hdr) + stream->frame_size;
+    channel->buf_size = sizeof(pjmedia_rtp_hdr) + stream->frame_size;
 
-	/* It should big enough to hold (minimally) RTCP SR with an SDES. */
-	min_out_pkt_size =  sizeof(pjmedia_rtcp_sr_pkt) +
-			    sizeof(pjmedia_rtcp_common) +
-			    (4 + (unsigned)stream->cname.slen) +
-			    32;
+    /* It should big enough to hold (minimally) RTCP SR with an SDES. */
+    min_out_pkt_size =  sizeof(pjmedia_rtcp_sr_pkt) +
+                sizeof(pjmedia_rtcp_common) +
+                (4 + (unsigned)stream->cname.slen) +
+                32;
 
-	if (channel->buf_size < min_out_pkt_size)
-	    channel->buf_size = min_out_pkt_size;
+    if (channel->buf_size < min_out_pkt_size)
+        channel->buf_size = min_out_pkt_size;
 
-	channel->buf = pj_pool_alloc(pool, channel->buf_size);
-	PJ_ASSERT_RETURN(channel->buf != NULL, PJ_ENOMEM);
+    channel->buf = pj_pool_alloc(pool, channel->buf_size);
+    PJ_ASSERT_RETURN(channel->buf != NULL, PJ_ENOMEM);
     }
 
     /* Create RTP and RTCP sessions: */
     {
-	pjmedia_rtp_session_setting settings;
+    pjmedia_rtp_session_setting settings;
 
-	settings.flags = (pj_uint8_t)((info->rtp_seq_ts_set << 2) |
-				      (info->has_rem_ssrc << 4) | 3);
-	settings.default_pt = pt;
-	settings.sender_ssrc = info->ssrc;
-	settings.peer_ssrc = info->rem_ssrc;
-	settings.seq = info->rtp_seq;
-	settings.ts = info->rtp_ts;
-	status = pjmedia_rtp_session_init2(&channel->rtp, settings);
+    settings.flags = (pj_uint8_t)((info->rtp_seq_ts_set << 2) |
+                      (info->has_rem_ssrc << 4) | 3);
+    settings.default_pt = pt;
+    settings.sender_ssrc = info->ssrc;
+    settings.peer_ssrc = info->rem_ssrc;
+    settings.seq = info->rtp_seq;
+    settings.ts = info->rtp_ts;
+    status = pjmedia_rtp_session_init2(&channel->rtp, settings);
     }
     if (status != PJ_SUCCESS)
-	return status;
+    return status;
 
     /* Init port. */
     pjmedia_port_info_init2(pi, &name, SIGNATURE, dir, fmt);
     if (dir == PJMEDIA_DIR_DECODING) {
-	channel->port.get_frame = &get_frame;
+    channel->port.get_frame = &get_frame;
     } else {
-	pi->fmt.id = info->codec_param->dec_fmt.id;
-	channel->port.put_frame = &put_frame;
+    pi->fmt.id = info->codec_param->dec_fmt.id;
+    channel->port.put_frame = &put_frame;
     }
 
     /* Init port. */
     channel->port.port_data.pdata = stream;
 
     PJ_LOG(4, (name.ptr,
-	       "%s channel created %dx%d %s%s%.*s %d/%d(~%d)fps",
-	       (dir==PJMEDIA_DIR_ENCODING?"Encoding":"Decoding"),
-	       pi->fmt.det.vid.size.w, pi->fmt.det.vid.size.h,
-	       pjmedia_fourcc_name(pi->fmt.id, fourcc_name),
-	       (dir==PJMEDIA_DIR_ENCODING?"->":"<-"),
-	       info->codec_info.encoding_name.slen,
-	       info->codec_info.encoding_name.ptr,
-	       pi->fmt.det.vid.fps.num, pi->fmt.det.vid.fps.denum,
-	       pi->fmt.det.vid.fps.num/pi->fmt.det.vid.fps.denum));
+           "%s channel created %dx%d %s%s%.*s %d/%d(~%d)fps",
+           (dir==PJMEDIA_DIR_ENCODING?"Encoding":"Decoding"),
+           pi->fmt.det.vid.size.w, pi->fmt.det.vid.size.h,
+           pjmedia_fourcc_name(pi->fmt.id, fourcc_name),
+           (dir==PJMEDIA_DIR_ENCODING?"->":"<-"),
+           info->codec_info.encoding_name.slen,
+           info->codec_info.encoding_name.ptr,
+           pi->fmt.det.vid.fps.num, pi->fmt.det.vid.fps.denum,
+           pi->fmt.det.vid.fps.num/pi->fmt.det.vid.fps.denum));
 
     /* Done. */
     *p_channel = channel;
@@ -2051,12 +1806,12 @@ static pj_status_t create_channel( pj_pool_t *pool,
  * Create stream.
  */
 PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
-					pjmedia_endpt *endpt,
-					pj_pool_t *pool,
-					pjmedia_vid_stream_info *info,
-					pjmedia_transport *tp,
-					void *user_data,
-					pjmedia_vid_stream **p_stream)
+                    pjmedia_endpt *endpt,
+                    pj_pool_t *pool,
+                    pjmedia_vid_stream_info *info,
+                    pjmedia_transport *tp,
+                    void *user_data,
+                    pjmedia_vid_stream **p_stream)
 {
     enum { M = 32 };
     pj_pool_t *own_pool = NULL;
@@ -2069,11 +1824,11 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
     pjmedia_transport_attach_param att_param;
 
     if (!pool) {
-	own_pool = pjmedia_endpt_create_pool( endpt, "vstrm%p",
-	                                      PJMEDIA_VSTREAM_SIZE,
-	                                      PJMEDIA_VSTREAM_INC);
-	PJ_ASSERT_RETURN(own_pool != NULL, PJ_ENOMEM);
-	pool = own_pool;
+    own_pool = pjmedia_endpt_create_pool( endpt, "vstrm%p",
+                                          PJMEDIA_VSTREAM_SIZE,
+                                          PJMEDIA_VSTREAM_INC);
+    PJ_ASSERT_RETURN(own_pool != NULL, PJ_ENOMEM);
+    pool = own_pool;
     }
 
     /* Allocate stream */
@@ -2088,48 +1843,48 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
     /* Init stream/port name */
     stream->name.ptr = (char*) pj_pool_alloc(pool, M);
     stream->name.slen = pj_ansi_snprintf(stream->name.ptr, M,
-					 "vstrm%p", stream);
+                     "vstrm%p", stream);
 
     /* Create and initialize codec: */
     status = pjmedia_vid_codec_mgr_alloc_codec(stream->codec_mgr,
-					       &info->codec_info,
-					       &stream->codec);
+                           &info->codec_info,
+                           &stream->codec);
     if (status != PJ_SUCCESS)
-	return status;
+    return status;
 
     /* Get codec param: */
     if (!info->codec_param) {
-	pjmedia_vid_codec_param def_param;
+    pjmedia_vid_codec_param def_param;
 
-	status = pjmedia_vid_codec_mgr_get_default_param(stream->codec_mgr,
-						         &info->codec_info,
-						         &def_param);
-	if (status != PJ_SUCCESS)
-	    return status;
+    status = pjmedia_vid_codec_mgr_get_default_param(stream->codec_mgr,
+                                 &info->codec_info,
+                                 &def_param);
+    if (status != PJ_SUCCESS)
+        return status;
 
-	info->codec_param = pjmedia_vid_codec_param_clone(pool, &def_param);
-	pj_assert(info->codec_param);
+    info->codec_param = pjmedia_vid_codec_param_clone(pool, &def_param);
+    pj_assert(info->codec_param);
     }
 
     /* Init codec param and adjust MTU */
     info->codec_param->dir = info->dir;
     info->codec_param->enc_mtu -= (sizeof(pjmedia_rtp_hdr) +
-				   PJMEDIA_STREAM_RESV_PAYLOAD_LEN);
+                   PJMEDIA_STREAM_RESV_PAYLOAD_LEN);
     if (info->codec_param->enc_mtu > PJMEDIA_MAX_MTU)
-	info->codec_param->enc_mtu = PJMEDIA_MAX_MTU;
+    info->codec_param->enc_mtu = PJMEDIA_MAX_MTU;
 
     /* Packet size estimation for decoding direction */
     vfd_enc = pjmedia_format_get_video_format_detail(
-					&info->codec_param->enc_fmt, PJ_TRUE);
+                    &info->codec_param->enc_fmt, PJ_TRUE);
     vfd_dec = pjmedia_format_get_video_format_detail(
-					&info->codec_param->dec_fmt, PJ_TRUE);
+                    &info->codec_param->dec_fmt, PJ_TRUE);
 
     /* Init stream: */
     stream->endpt = endpt;
     stream->dir = info->dir;
     stream->user_data = user_data;
     stream->rtcp_interval = (PJMEDIA_RTCP_INTERVAL-500 + (pj_rand()%1000)) *
-			    info->codec_info.clock_rate / 1000;
+                info->codec_info.clock_rate / 1000;
     stream->rtcp_sdes_bye_disabled = info->rtcp_sdes_bye_disabled;
 
     stream->jb_last_frm = PJMEDIA_JB_NORMAL_FRAME;
@@ -2141,30 +1896,30 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
 
     stream->cname = info->cname;
     if (stream->cname.slen == 0) {
-	/* Build random RTCP CNAME. CNAME has user@host format */
-    	stream->cname.ptr = p = (char*) pj_pool_alloc(pool, 20);
-    	pj_create_random_string(p, 5);
-    	p += 5;
-    	*p++ = '@'; *p++ = 'p'; *p++ = 'j';
-    	pj_create_random_string(p, 6);
-    	p += 6;
-    	*p++ = '.'; *p++ = 'o'; *p++ = 'r'; *p++ = 'g';
-    	stream->cname.slen = p - stream->cname.ptr;
+    /* Build random RTCP CNAME. CNAME has user@host format */
+        stream->cname.ptr = p = (char*) pj_pool_alloc(pool, 20);
+        pj_create_random_string(p, 5);
+        p += 5;
+        *p++ = '@'; *p++ = 'p'; *p++ = 'j';
+        pj_create_random_string(p, 6);
+        p += 6;
+        *p++ = '.'; *p++ = 'o'; *p++ = 'r'; *p++ = 'g';
+        stream->cname.slen = p - stream->cname.ptr;
     }
 
     /* Create mutex to protect jitter buffer: */
 
     status = pj_mutex_create_simple(pool, NULL, &stream->jb_mutex);
     if (status != PJ_SUCCESS)
-	return status;
+    return status;
 
     /* Init and open the codec. */
     status = pjmedia_vid_codec_init(stream->codec, pool);
     if (status != PJ_SUCCESS)
-	return status;
+    return status;
     status = pjmedia_vid_codec_open(stream->codec, info->codec_param);
     if (status != PJ_SUCCESS)
-	return status;
+    return status;
 
     /* Subscribe to codec events */
     pjmedia_event_subscribe(NULL, &stream_event_cb, stream,
@@ -2175,7 +1930,7 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
 
 #if 0
     stream->frame_size = vfd_enc->max_bps/8 * vfd_enc->fps.denum /
-			 vfd_enc->fps.num;
+             vfd_enc->fps.num;
 
     /* As the maximum frame_size is not represented directly by maximum bps
      * (which includes intra and predicted frames), let's increase the
@@ -2186,9 +1941,9 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
 
     /* Validate the frame size */
     if (stream->frame_size == 0 ||
-	stream->frame_size > PJMEDIA_MAX_VIDEO_ENC_FRAME_SIZE)
+    stream->frame_size > PJMEDIA_MAX_VIDEO_ENC_FRAME_SIZE)
     {
-	stream->frame_size = PJMEDIA_MAX_VIDEO_ENC_FRAME_SIZE;
+    stream->frame_size = PJMEDIA_MAX_VIDEO_ENC_FRAME_SIZE;
     }
 
     /* Get frame length in timestamp unit */
@@ -2198,15 +1953,15 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
     /* Initialize send rate states */
     pj_get_timestamp_freq(&stream->ts_freq);
     if (info->rc_cfg.bandwidth == 0)
-	info->rc_cfg.bandwidth = vfd_enc->max_bps;
+    info->rc_cfg.bandwidth = vfd_enc->max_bps;
 
     /* For simple blocking, need to have bandwidth large enough, otherwise
      * we can slow down the transmission too much
      */
     if (info->rc_cfg.method==PJMEDIA_VID_STREAM_RC_SIMPLE_BLOCKING &&
-	info->rc_cfg.bandwidth < vfd_enc->avg_bps * 3)
+    info->rc_cfg.bandwidth < vfd_enc->avg_bps * 3)
     {
-	info->rc_cfg.bandwidth = vfd_enc->avg_bps * 3;
+    info->rc_cfg.bandwidth = vfd_enc->avg_bps * 3;
     }
 
     /* Override the initial framerate in the decoding direction. This initial
@@ -2221,49 +1976,49 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
 
     /* Create decoder channel */
     status = create_channel( pool, stream, PJMEDIA_DIR_DECODING,
-			     info->rx_pt, info, &stream->dec);
+                 info->rx_pt, info, &stream->dec);
     if (status != PJ_SUCCESS)
-	return status;
+    return status;
 
     /* Create encoder channel */
     status = create_channel( pool, stream, PJMEDIA_DIR_ENCODING,
-			     info->tx_pt, info, &stream->enc);
+                 info->tx_pt, info, &stream->enc);
     if (status != PJ_SUCCESS)
-	return status;
+    return status;
 
     /* Create temporary buffer for immediate decoding */
     stream->dec_max_size = vfd_dec->size.w * vfd_dec->size.h * 4;
     stream->dec_frame.buf = pj_pool_alloc(pool, stream->dec_max_size);
 
     /* Init jitter buffer parameters: */
-    frm_ptime	    = 1000 * vfd_enc->fps.denum / vfd_enc->fps.num;
+    frm_ptime       = 1000 * vfd_enc->fps.denum / vfd_enc->fps.num;
     chunks_per_frm  = stream->frame_size / PJMEDIA_MAX_MRU;
     if (chunks_per_frm < MIN_CHUNKS_PER_FRM)
-	chunks_per_frm = MIN_CHUNKS_PER_FRM;
+    chunks_per_frm = MIN_CHUNKS_PER_FRM;
 
     /* JB max count, default 500ms */
     if (info->jb_max >= frm_ptime)
-	jb_max	    = info->jb_max * chunks_per_frm / frm_ptime;
+    jb_max      = info->jb_max * chunks_per_frm / frm_ptime;
     else
-	jb_max	    = 500 * chunks_per_frm / frm_ptime;
+    jb_max      = 500 * chunks_per_frm / frm_ptime;
 
     /* JB min prefetch, default 1 frame */
     if (info->jb_min_pre >= frm_ptime)
-	jb_min_pre  = info->jb_min_pre * chunks_per_frm / frm_ptime;
+    jb_min_pre  = info->jb_min_pre * chunks_per_frm / frm_ptime;
     else
-	jb_min_pre  = 1;
+    jb_min_pre  = 1;
 
     /* JB max prefetch, default 4/5 JB max count */
     if (info->jb_max_pre >= frm_ptime)
-	jb_max_pre  = info->jb_max_pre * chunks_per_frm / frm_ptime;
+    jb_max_pre  = info->jb_max_pre * chunks_per_frm / frm_ptime;
     else
-	jb_max_pre  = jb_max * 4 / 5;
+    jb_max_pre  = jb_max * 4 / 5;
 
     /* JB init prefetch, default 0 */
     if (info->jb_init >= frm_ptime)
-	jb_init  = info->jb_init * chunks_per_frm / frm_ptime;
+    jb_init  = info->jb_init * chunks_per_frm / frm_ptime;
     else
-	jb_init  = 0;
+    jb_init  = 0;
 
     /* Allocate array for temporary storage for assembly of incoming
      * frames. Add more just in case.
@@ -2275,10 +2030,10 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
     /* Create jitter buffer */
     status = pjmedia_jbuf_create(pool, &stream->dec->port.info.name,
                                  PJMEDIA_MAX_MRU,
-				 1000 * vfd_enc->fps.denum / vfd_enc->fps.num,
-				 jb_max, &stream->jb);
+                 1000 * vfd_enc->fps.denum / vfd_enc->fps.num,
+                 jb_max, &stream->jb);
     if (status != PJ_SUCCESS)
-	return status;
+    return status;
 
 
     /* Set up jitter buffer */
@@ -2287,27 +2042,27 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
 
     /* Init RTCP session: */
     {
-	pjmedia_rtcp_session_setting rtcp_setting;
+    pjmedia_rtcp_session_setting rtcp_setting;
 
-	pjmedia_rtcp_session_setting_default(&rtcp_setting);
-	rtcp_setting.name = stream->name.ptr;
-	rtcp_setting.ssrc = info->ssrc;
-	rtcp_setting.rtp_ts_base = pj_ntohl(stream->enc->rtp.out_hdr.ts);
-	rtcp_setting.clock_rate = info->codec_info.clock_rate;
-	rtcp_setting.samples_per_frame = 1;
+    pjmedia_rtcp_session_setting_default(&rtcp_setting);
+    rtcp_setting.name = stream->name.ptr;
+    rtcp_setting.ssrc = info->ssrc;
+    rtcp_setting.rtp_ts_base = pj_ntohl(stream->enc->rtp.out_hdr.ts);
+    rtcp_setting.clock_rate = info->codec_info.clock_rate;
+    rtcp_setting.samples_per_frame = 1;
 
-	pjmedia_rtcp_init2(&stream->rtcp, &rtcp_setting);
+    pjmedia_rtcp_init2(&stream->rtcp, &rtcp_setting);
     }
 
     /* Allocate outgoing RTCP buffer, should be enough to hold SR/RR, SDES,
      * BYE, and XR.
      */
     stream->out_rtcp_pkt_size =  sizeof(pjmedia_rtcp_sr_pkt) +
-				 sizeof(pjmedia_rtcp_common) +
-				 (4 + (unsigned)stream->cname.slen) +
-				 32;
+                 sizeof(pjmedia_rtcp_common) +
+                 (4 + (unsigned)stream->cname.slen) +
+                 32;
     if (stream->out_rtcp_pkt_size > PJMEDIA_MAX_MTU)
-	stream->out_rtcp_pkt_size = PJMEDIA_MAX_MTU;
+    stream->out_rtcp_pkt_size = PJMEDIA_MAX_MTU;
 
     stream->out_rtcp_pkt = pj_pool_alloc(pool, stream->out_rtcp_pkt_size);
     pj_bzero(&att_param, sizeof(att_param));
@@ -2317,9 +2072,9 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
     pj_sockaddr_cp(&att_param.rem_addr, &info->rem_addr);
     pj_sockaddr_cp(&stream->rem_rtp_addr, &info->rem_addr);
     if (info->rtcp_mux) {
-	pj_sockaddr_cp(&att_param.rem_rtcp, &info->rem_addr);
+    pj_sockaddr_cp(&att_param.rem_rtcp, &info->rem_addr);
     } else if (pj_sockaddr_has_addr(&info->rem_rtcp.addr)) {
-	pj_sockaddr_cp(&att_param.rem_rtcp, &info->rem_rtcp);
+    pj_sockaddr_cp(&att_param.rem_rtcp, &info->rem_rtcp);
     }
     att_param.addr_len = pj_sockaddr_get_len(&info->rem_addr);
     att_param.rtp_cb2 = &on_rx_rtp;
@@ -2328,7 +2083,7 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
     /* Only attach transport when stream is ready. */
     status = pjmedia_transport_attach2(tp, &att_param);
     if (status != PJ_SUCCESS)
-	return status;
+    return status;
 
     stream->transport = tp;
 
@@ -2340,114 +2095,69 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
 #if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
     /* NAT hole punching by sending KA packet via RTP transport. */
     if (stream->use_ka)
-	send_keep_alive_packet(stream);
+    send_keep_alive_packet(stream);
 #endif
 
 #if TRACE_JB
     {
-	char trace_name[PJ_MAXPATH];
-	pj_ssize_t len;
+    char trace_name[PJ_MAXPATH];
+    pj_ssize_t len;
 
-	pj_ansi_snprintf(trace_name, sizeof(trace_name),
-			 TRACE_JB_PATH_PREFIX "%s.csv",
-			 channel->port.info.name.ptr);
-	status = pj_file_open(pool, trace_name, PJ_O_RDWR,
-			      &stream->trace_jb_fd);
-	if (status != PJ_SUCCESS) {
-	    stream->trace_jb_fd = TRACE_JB_INVALID_FD;
-	    PJ_LOG(3,(THIS_FILE, "Failed creating RTP trace file '%s'",
-		      trace_name));
-	} else {
-	    stream->trace_jb_buf = (char*)pj_pool_alloc(pool, PJ_LOG_MAX_SIZE);
+    pj_ansi_snprintf(trace_name, sizeof(trace_name),
+             TRACE_JB_PATH_PREFIX "%s.csv",
+             channel->port.info.name.ptr);
+    status = pj_file_open(pool, trace_name, PJ_O_RDWR,
+                  &stream->trace_jb_fd);
+    if (status != PJ_SUCCESS) {
+        stream->trace_jb_fd = TRACE_JB_INVALID_FD;
+        PJ_LOG(3,(THIS_FILE, "Failed creating RTP trace file '%s'",
+              trace_name));
+    } else {
+        stream->trace_jb_buf = (char*)pj_pool_alloc(pool, PJ_LOG_MAX_SIZE);
 
-	    /* Print column header */
-	    len = pj_ansi_snprintf(stream->trace_jb_buf, PJ_LOG_MAX_SIZE,
-				   "Time, Operation, Size, Frame Count, "
-				   "Frame type, RTP Seq, RTP TS, RTP M, "
-				   "JB size, JB burst level, JB prefetch\n");
-	    if (len < 1 || len >= PJ_LOG_MAX_SIZE)
-		len = PJ_LOG_MAX_SIZE - 1;
-	    pj_file_write(stream->trace_jb_fd, stream->trace_jb_buf, &len);
-	    pj_file_flush(stream->trace_jb_fd);
-	}
+        /* Print column header */
+        len = pj_ansi_snprintf(stream->trace_jb_buf, PJ_LOG_MAX_SIZE,
+                   "Time, Operation, Size, Frame Count, "
+                   "Frame type, RTP Seq, RTP TS, RTP M, "
+                   "JB size, JB burst level, JB prefetch\n");
+        if (len < 1 || len >= PJ_LOG_MAX_SIZE)
+        len = PJ_LOG_MAX_SIZE - 1;
+        pj_file_write(stream->trace_jb_fd, stream->trace_jb_buf, &len);
+        pj_file_flush(stream->trace_jb_fd);
+    }
     }
 #endif
 
     /* Save the stream info */
     pj_memcpy(&stream->info, info, sizeof(*info));
     stream->info.codec_param = pjmedia_vid_codec_param_clone(
-						pool, info->codec_param);
+                        pool, info->codec_param);
 
-
-//    HISI_VENC_USER_INIT();
-        
-//    pj_json_elem *elem;
     char *out_buf;
-//    unsigned size;
-//    pj_off_t size;
     pj_json_err_info err;
     
     pj_json_elem* elem = (pj_json_elem*)load_json_config(pool, "config.json");
-//    pj_json_elem* elem = (pj_json_elem*)load_json_config(pool, "config.json", &size);
     
     if (elem != NULL) {
-    
-//    size = (unsigned)strlen(json_doc1);
-//    elem = pj_json_parse(pool, json_doc1, &size, &err);
-//    if (!elem) {
-//	PJ_LOG(1, (THIS_FILE, "  Error: json_verify_1() parse error"));
-////	goto on_error;
-//    }
-    
-//    size = (unsigned)size * 2;
-//    size = (unsigned)strlen(json_doc1) * 2;
-//    out_buf = pj_pool_alloc(pool, size);
-
-//    if (pj_json_write(elem, out_buf, &size)) {
-//	PJ_LOG(1, (THIS_FILE, "  Error: json_verify_1() write error"));
-////	goto on_error;
-//    }
-
-//    PJ_LOG(3,(THIS_FILE, "Json document:\n%s", out_buf));
-    
-//    PJ_LOG(1, (THIS_FILE, "%s", elem->value.children.next->name));
-//    pj_json_elem* sensor_json_object = (pj_json_elem*)find_value_by_name(elem, "groups");
-//    PJ_LOG(1, (THIS_FILE, "%s", sensor_json_object->name));
-    
-//    stream->hisi_app_config;
-    pj_bzero(&stream->hisi_app_config, sizeof(stream->hisi_app_config));
-    
-    stream->hisi_app_config = (HISI_SDK_APP_S*)fill_app_from_config(pool, elem);
-//    fill_app_from_config(pool, elem, &stream->hisi_app_config);
-    
-    PJ_LOG(1, (THIS_FILE, "stream->hisi_app_config.stViConfig.sensor.lib_name = %s", stream->hisi_app_config->stViConfig.sensor.lib_name));
-    PJ_LOG(1, (THIS_FILE, "stream->hisi_app_config.stViConfig.sensor.sensor_name = %s", stream->hisi_app_config->stViConfig.sensor.sensor_name));
-//===========================================================================================
-//    HI_S32 s32Ret = HI_SUCCESS;
-    
-    start_sdk(stream->hisi_app_config);
+        pj_bzero(&stream->hisi_app_config, sizeof(stream->hisi_app_config));
+        
+        stream->hisi_app_config = (HISI_SDK_APP_S*) fill_app_from_config(pool, elem);
+    //===========================================================================================
+        
+        start_sdk(stream->hisi_app_config);
     }
+
     stream->has_more_data = PJ_FALSE;
 
     pjmedia_h264_packetizer_cfg  pktz_cfg;
     pj_bzero(&pktz_cfg, sizeof(pktz_cfg));
-    // pktz_cfg.mtu = PJMEDIA_MAX_VIDEO_ENC_FRAME_SIZE - sizeof(pjmedia_rtp_hdr);
-    // pktz_cfg.mtu = PJMEDIA_MAX_VID_PAYLOAD_SIZE - sizeof(pjmedia_rtp_hdr);
     pktz_cfg.mtu = PJMEDIA_MAX_VID_PAYLOAD_SIZE;
-    // pktz_cfg.mtu = param->enc_mtu;
-    // pktz_cfg.mtu = 170030;
     pktz_cfg.unpack_nal_start = 4;
     /* Packetization mode */
     pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_NON_INTERLEAVED;
     // pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_INTERLEAVED;
     // pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_SINGLE_NAL;
 
-    // vp->cv_pool = pj_pool_create(vp->pool->factory, "cv_pool", 1024, 1024, NULL);
-    // if (!vp->cv_pool)
-    //     return PJ_ENOMEM;
-
-    // pj_status_t
-//    status = pjmedia_h264_packetizer_create(stream->own_pool, &pktz_cfg,
     status = pjmedia_h264_packetizer_create(pool, &pktz_cfg,
                                             &stream->pktz);
     if (status != PJ_SUCCESS) {
@@ -2469,9 +2179,6 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
     if (status != PJ_SUCCESS) {
         PJ_LOG(4, (THIS_FILE, "PJMEDIA_DIR_CAPTURE VIDEO pj_thread_create status == PJ_ERROR"));
         stream->thread_quit = PJ_TRUE;
-        // pj_thread_join(strm->play_thread);
-        // pj_thread_destroy(strm->play_thread);
-        // strm->play_thread = NULL;
     } else {
         PJ_LOG(4, (THIS_FILE, "PJMEDIA_DIR_CAPTURE VIDEO pj_thread_create status == PJ_SUCCESS"));
     }
@@ -2480,11 +2187,6 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
                                           1024,
                                           1024);
     PJ_ASSERT_RETURN(stream->cv_pool != NULL, PJ_ENOMEM);
-
-    // stream->cv_pool = pj_pool_create(pool, "cv_pool", 1024, 1024, NULL);
-    // if (!stream->cv_pool)
-    //     return PJ_ENOMEM;
-    // ===================================================================
 
     /* Success! */
     *p_stream = stream;
@@ -2506,20 +2208,20 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_destroy( pjmedia_vid_stream *stream )
 
 #if TRACE_RC
     {
-	unsigned total_time;
+    unsigned total_time;
 
-	total_time = pj_elapsed_msec(&stream->tx_start, &stream->tx_end);
-	PJ_LOG(5, (stream->name.ptr,
-		   "RC stat: pkt_cnt=%.2f/image, sleep=%.2fms/s, fps=%.2f",
-		   stream->rc_total_pkt*1.0/stream->rc_total_img,
-		   stream->rc_total_sleep*1000.0/total_time,
-		   stream->rc_total_img*1000.0/total_time));
+    total_time = pj_elapsed_msec(&stream->tx_start, &stream->tx_end);
+    PJ_LOG(5, (stream->name.ptr,
+           "RC stat: pkt_cnt=%.2f/image, sleep=%.2fms/s, fps=%.2f",
+           stream->rc_total_pkt*1.0/stream->rc_total_img,
+           stream->rc_total_sleep*1000.0/total_time,
+           stream->rc_total_img*1000.0/total_time));
     }
 #endif
 
     /* Send RTCP BYE (also SDES) */
     if (!stream->rtcp_sdes_bye_disabled) {
-	send_rtcp(stream, PJ_TRUE, PJ_TRUE);
+    send_rtcp(stream, PJ_TRUE, PJ_TRUE);
     }
 
     /* Detach from transport
@@ -2527,44 +2229,45 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_destroy( pjmedia_vid_stream *stream )
      * it may cause deadlock. See ticket #460 for the details.
      */
     if (stream->transport) {
-	pjmedia_transport_detach(stream->transport, stream);
-	stream->transport = NULL;
+    pjmedia_transport_detach(stream->transport, stream);
+    stream->transport = NULL;
     }
 
     /* This function may be called when stream is partly initialized. */
     if (stream->jb_mutex)
-	pj_mutex_lock(stream->jb_mutex);
+    pj_mutex_lock(stream->jb_mutex);
 
 
     /* Free codec. */
     if (stream->codec) {
         pjmedia_event_unsubscribe(NULL, &stream_event_cb, stream,
                                   stream->codec);
-	pjmedia_vid_codec_close(stream->codec);
-	pjmedia_vid_codec_mgr_dealloc_codec(stream->codec_mgr, stream->codec);
-	stream->codec = NULL;
+    pjmedia_vid_codec_close(stream->codec);
+    pjmedia_vid_codec_mgr_dealloc_codec(stream->codec_mgr, stream->codec);
+    stream->codec = NULL;
     }
 
     /* Free mutex */
 
     if (stream->jb_mutex) {
-	pj_mutex_destroy(stream->jb_mutex);
-	stream->jb_mutex = NULL;
+    pj_mutex_destroy(stream->jb_mutex);
+    stream->jb_mutex = NULL;
     }
 
     /* Destroy jitter buffer */
     if (stream->jb) {
-	pjmedia_jbuf_destroy(stream->jb);
-	stream->jb = NULL;
+    pjmedia_jbuf_destroy(stream->jb);
+    stream->jb = NULL;
     }
 
 #if TRACE_JB
     if (TRACE_JB_OPENED(stream)) {
-	pj_file_close(stream->trace_jb_fd);
-	stream->trace_jb_fd = TRACE_JB_INVALID_FD;
+    pj_file_close(stream->trace_jb_fd);
+    stream->trace_jb_fd = TRACE_JB_INVALID_FD;
     }
 #endif
 
+//    pj_pool_safe_release(&stream->cv_pool);
     pj_pool_safe_release(&stream->own_pool);
 
     return PJ_SUCCESS;
@@ -2575,16 +2278,16 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_destroy( pjmedia_vid_stream *stream )
  * Get the port interface.
  */
 PJ_DEF(pj_status_t) pjmedia_vid_stream_get_port(pjmedia_vid_stream *stream,
-						pjmedia_dir dir,
-						pjmedia_port **p_port )
+                        pjmedia_dir dir,
+                        pjmedia_port **p_port )
 {
     PJ_ASSERT_RETURN(dir==PJMEDIA_DIR_ENCODING || dir==PJMEDIA_DIR_DECODING,
-		     PJ_EINVAL);
+             PJ_EINVAL);
 
     if (dir == PJMEDIA_DIR_ENCODING)
-	*p_port = &stream->enc->port;
+    *p_port = &stream->enc->port;
     else
-	*p_port = &stream->dec->port;
+    *p_port = &stream->dec->port;
 
     return PJ_SUCCESS;
 }
@@ -2594,7 +2297,7 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_get_port(pjmedia_vid_stream *stream,
  * Get the transport object
  */
 PJ_DEF(pjmedia_transport*) pjmedia_vid_stream_get_transport(
-						    pjmedia_vid_stream *st)
+                            pjmedia_vid_stream *st)
 {
     return st->transport;
 }
@@ -2604,8 +2307,8 @@ PJ_DEF(pjmedia_transport*) pjmedia_vid_stream_get_transport(
  * Get stream statistics.
  */
 PJ_DEF(pj_status_t) pjmedia_vid_stream_get_stat(
-					    const pjmedia_vid_stream *stream,
-					    pjmedia_rtcp_stat *stat)
+                        const pjmedia_vid_stream *stream,
+                        pjmedia_rtcp_stat *stat)
 {
     PJ_ASSERT_RETURN(stream && stat, PJ_EINVAL);
 
@@ -2631,8 +2334,8 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_reset_stat(pjmedia_vid_stream *stream)
  * Get jitter buffer state.
  */
 PJ_DEF(pj_status_t) pjmedia_vid_stream_get_stat_jbuf(
-					    const pjmedia_vid_stream *stream,
-					    pjmedia_jb_state *state)
+                        const pjmedia_vid_stream *stream,
+                        pjmedia_jb_state *state)
 {
     PJ_ASSERT_RETURN(stream && state, PJ_EINVAL);
     return pjmedia_jbuf_get_state(stream->jb, state);
@@ -2643,8 +2346,8 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_get_stat_jbuf(
  * Get the stream info.
  */
 PJ_DEF(pj_status_t) pjmedia_vid_stream_get_info(
-					    const pjmedia_vid_stream *stream,
-					    pjmedia_vid_stream_info *info)
+                        const pjmedia_vid_stream *stream,
+                        pjmedia_vid_stream_info *info)
 {
     PJ_ASSERT_RETURN(stream && info, PJ_EINVAL);
     pj_memcpy(info, &stream->info, sizeof(*info));
@@ -2661,19 +2364,19 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_start(pjmedia_vid_stream *stream)
     PJ_ASSERT_RETURN(stream && stream->enc && stream->dec, PJ_EINVALIDOP);
 
     if (stream->enc && (stream->dir & PJMEDIA_DIR_ENCODING)) {
-	stream->enc->paused = 0;
-	//pjmedia_snd_stream_start(stream->enc->snd_stream);
-	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream started"));
+    stream->enc->paused = 0;
+    //pjmedia_snd_stream_start(stream->enc->snd_stream);
+    PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream started"));
     } else {
-	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream paused"));
+    PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream paused"));
     }
 
     if (stream->dec && (stream->dir & PJMEDIA_DIR_DECODING)) {
-	stream->dec->paused = 0;
-	//pjmedia_snd_stream_start(stream->dec->snd_stream);
-	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream started"));
+    stream->dec->paused = 0;
+    //pjmedia_snd_stream_start(stream->dec->snd_stream);
+    PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream started"));
     } else {
-	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream paused"));
+    PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream paused"));
     }
 
     return PJ_SUCCESS;
@@ -2691,11 +2394,11 @@ PJ_DEF(pj_bool_t) pjmedia_vid_stream_is_running(pjmedia_vid_stream *stream,
     PJ_ASSERT_RETURN(stream, PJ_FALSE);
 
     if (dir & PJMEDIA_DIR_ENCODING) {
-	is_running &= (stream->enc && !stream->enc->paused);
+    is_running &= (stream->enc && !stream->enc->paused);
     }
 
     if (dir & PJMEDIA_DIR_DECODING) {
-	is_running &= (stream->dec && !stream->dec->paused);
+    is_running &= (stream->dec && !stream->dec->paused);
     }
 
     return is_running;
@@ -2705,24 +2408,24 @@ PJ_DEF(pj_bool_t) pjmedia_vid_stream_is_running(pjmedia_vid_stream *stream,
  * Pause stream.
  */
 PJ_DEF(pj_status_t) pjmedia_vid_stream_pause(pjmedia_vid_stream *stream,
-					     pjmedia_dir dir)
+                         pjmedia_dir dir)
 {
     PJ_ASSERT_RETURN(stream, PJ_EINVAL);
 
     if ((dir & PJMEDIA_DIR_ENCODING) && stream->enc) {
-	stream->enc->paused = 1;
-	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream paused"));
+    stream->enc->paused = 1;
+    PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream paused"));
     }
 
     if ((dir & PJMEDIA_DIR_DECODING) && stream->dec) {
-	stream->dec->paused = 1;
+    stream->dec->paused = 1;
 
-	/* Also reset jitter buffer */
-	pj_mutex_lock( stream->jb_mutex );
-	pjmedia_jbuf_reset(stream->jb);
-	pj_mutex_unlock( stream->jb_mutex );
+    /* Also reset jitter buffer */
+    pj_mutex_lock( stream->jb_mutex );
+    pjmedia_jbuf_reset(stream->jb);
+    pj_mutex_unlock( stream->jb_mutex );
 
-	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream paused"));
+    PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream paused"));
     }
 
     return PJ_SUCCESS;
@@ -2733,18 +2436,18 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_pause(pjmedia_vid_stream *stream,
  * Resume stream
  */
 PJ_DEF(pj_status_t) pjmedia_vid_stream_resume(pjmedia_vid_stream *stream,
-					      pjmedia_dir dir)
+                          pjmedia_dir dir)
 {
     PJ_ASSERT_RETURN(stream, PJ_EINVAL);
 
     if ((dir & PJMEDIA_DIR_ENCODING) && stream->enc) {
-	stream->enc->paused = 0;
-	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream resumed"));
+    stream->enc->paused = 0;
+    PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream resumed"));
     }
 
     if ((dir & PJMEDIA_DIR_DECODING) && stream->dec) {
-	stream->dec->paused = 0;
-	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream resumed"));
+    stream->dec->paused = 0;
+    PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream resumed"));
     }
 
     return PJ_SUCCESS;
@@ -2755,12 +2458,12 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_resume(pjmedia_vid_stream *stream,
  * Force stream to send video keyframe.
  */
 PJ_DEF(pj_status_t) pjmedia_vid_stream_send_keyframe(
-						pjmedia_vid_stream *stream)
+                        pjmedia_vid_stream *stream)
 {
     PJ_ASSERT_RETURN(stream, PJ_EINVAL);
 
     if (!pjmedia_vid_stream_is_running(stream, PJMEDIA_DIR_ENCODING))
-	return PJ_EINVALIDOP;
+    return PJ_EINVALIDOP;
 
     stream->force_keyframe = PJ_TRUE;
 
@@ -2772,7 +2475,7 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_send_keyframe(
  * Send RTCP SDES.
  */
 PJ_DEF(pj_status_t) pjmedia_vid_stream_send_rtcp_sdes(
-						pjmedia_vid_stream *stream)
+                        pjmedia_vid_stream *stream)
 {
     PJ_ASSERT_RETURN(stream, PJ_EINVAL);
 
@@ -2784,7 +2487,7 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_send_rtcp_sdes(
  * Send RTCP BYE.
  */
 PJ_DEF(pj_status_t) pjmedia_vid_stream_send_rtcp_bye(
-						pjmedia_vid_stream *stream)
+                        pjmedia_vid_stream *stream)
 {
     PJ_ASSERT_RETURN(stream, PJ_EINVAL);
 
@@ -2797,7 +2500,7 @@ PJ_DEF(pj_status_t) pjmedia_vid_stream_send_rtcp_bye(
     PJ_LOG(4,(THIS_FILE, "Stopping stream.."));
 
     if (stream->enc && stream->transport) {
-	return send_rtcp(stream, PJ_TRUE, PJ_TRUE);
+    return send_rtcp(stream, PJ_TRUE, PJ_TRUE);
     }
 
     return PJ_SUCCESS;
@@ -2833,7 +2536,7 @@ pjmedia_vid_stream_sk_config_default(pjmedia_vid_stream_sk_config *cfg)
  */
 PJ_DEF(pj_status_t)
 pjmedia_vid_stream_get_rtp_session_info(pjmedia_vid_stream *stream,
-				    pjmedia_stream_rtp_sess_info *session_info)
+                    pjmedia_stream_rtp_sess_info *session_info)
 {
     session_info->rx_rtp = &stream->dec->rtp;
     session_info->tx_rtp = &stream->enc->rtp;
@@ -2843,7469 +2546,3 @@ pjmedia_vid_stream_get_rtp_session_info(pjmedia_vid_stream *stream,
 
 
 #endif /* PJMEDIA_HAS_VIDEO */
-
-
-
-///* $Id: vid_stream.c 5788 2018-05-09 06:58:48Z ming $ */
-///*
-// * Copyright (C) 2011 Teluu Inc. (http://www.teluu.com)
-// *
-// * This program is free software; you can redistribute it and/or modify
-// * it under the terms of the GNU General Public License as published by
-// * the Free Software Foundation; either version 2 of the License, or
-// * (at your option) any later version.
-// *
-// * This program is distributed in the hope that it will be useful,
-// * but WITHOUT ANY WARRANTY; without even the implied warranty of
-// * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// * GNU General Public License for more details.
-// *
-// * You should have received a copy of the GNU General Public License
-// * along with this program; if not, write to the Free Software
-// * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-// */
-//#include <pjmedia/vid_stream.h>
-//#include <pjmedia/errno.h>
-//#include <pjmedia/event.h>
-//#include <pjmedia/rtp.h>
-//#include <pjmedia/rtcp.h>
-//#include <pjmedia/jbuf.h>
-//#include <pj/array.h>
-//#include <pj/assert.h>
-//#include <pj/compat/socket.h>
-//#include <pj/errno.h>
-//#include <pj/ioqueue.h>
-//#include <pj/log.h>
-//#include <pj/os.h>
-//#include <pj/pool.h>
-//#include <pj/rand.h>
-//#include <pj/sock_select.h>
-//#include <pj/string.h>	    /* memcpy() */
-//#include <pjmedia-codec/h263_packetizer.h>
-//#include <pjmedia-codec/h264_packetizer.h>
-//
-//#include "hi_comm_venc.h"
-//
-//#include <pjlib-util/json.h>
-//#include "hi_sdk/hisi_comm.h"
-//
-//
-////pj_json_elem* load_json_config(pj_pool_t *pool, const char *filename, pj_off_t *size);
-//pj_json_elem* load_json_config(pj_pool_t *pool, const char *filename);
-//int stop_sdk(HISI_SDK_APP_S *app);
-//int start_sdk(HISI_SDK_APP_S *app);
-//HISI_SDK_APP_S* fill_app_from_config(pj_pool_t *pool, pj_json_elem* value);
-//
-//
-//#if defined(PJMEDIA_HAS_VIDEO) && (PJMEDIA_HAS_VIDEO != 0)
-//
-////#include <pjmedia/hisi_common.h>
-//#include "hi_comm_venc.h"
-//
-//#if 1
-//#define MY_DBG()\
-//do{\
-//}while(0)
-//#else
-//#define MY_DBG()\
-//do{\
-//    PJ_LOG(4, (THIS_FILE, "%s: After line #%d", __FUNCTION__, __LINE__));\
-//}while(0)
-//#endif
-//
-//#define THIS_FILE			"vid_stream.c"
-//#define ERRLEVEL			1
-//#define LOGERR_(expr)			stream_perror expr
-//#define TRC_(expr)          PJ_LOG(4,expr)
-//// #define TRC_(expr)			PJ_LOG(5,expr)
-//#define SIGNATURE			PJMEDIA_SIG_PORT_VID_STREAM
-//
-//// #define TRACE_RC            0
-//#define TRACE_RC			1
-//
-///* Tracing jitter buffer operations in a stream session to a CSV file.
-// * The trace will contain JB operation timestamp, frame info, RTP info, and
-// * the JB state right after the operation.
-// */
-//#define TRACE_JB            0   /* Enable/disable trace.    */
-//// #define TRACE_JB			1	/* Enable/disable trace.    */
-//#define TRACE_JB_PATH_PREFIX		""	/* Optional path/prefix
-//						   for the CSV filename.    */
-//#if TRACE_JB
-//#   include <pj/file_io.h>
-//#   define TRACE_JB_INVALID_FD		((pj_oshandle_t)-1)
-//#   define TRACE_JB_OPENED(s)		(s->trace_jb_fd != TRACE_JB_INVALID_FD)
-//#endif
-//
-//#ifndef PJMEDIA_VSTREAM_SIZE
-//#   define PJMEDIA_VSTREAM_SIZE	1000
-//#endif
-//
-//#ifndef PJMEDIA_VSTREAM_INC
-//#   define PJMEDIA_VSTREAM_INC	1000
-//#endif
-//
-///* Due to network MTU limitation, a picture bitstream may be splitted into
-// * several chunks for RTP delivery. The chunk number may vary depend on the
-// * picture resolution and MTU. This constant specifies the minimum chunk
-// * number to be allocated to store a picture bitstream in decoding direction.
-// */
-//#define MIN_CHUNKS_PER_FRM  25
-//// #define MIN_CHUNKS_PER_FRM	30
-//
-///* Video stream keep-alive feature is currently disabled. */
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA != 0
-//#   undef PJMEDIA_STREAM_ENABLE_KA
-//#   define PJMEDIA_STREAM_ENABLE_KA 0
-//#endif
-//
-//
-///**
-// * Media channel.
-// */
-//typedef struct pjmedia_vid_channel
-//{
-//    pjmedia_vid_stream	   *stream;	    /**< Parent stream.		    */
-//    pjmedia_dir		    dir;	    /**< Channel direction.	    */
-//    pjmedia_port	    port;	    /**< Port interface.	    */
-//    unsigned		    pt;		    /**< Payload type.		    */
-//    pj_bool_t		    paused;	    /**< Paused?.		    */
-//    void		   *buf;	    /**< Output buffer.		    */
-//    unsigned		    buf_size;	    /**< Size of output buffer.	    */
-//    pjmedia_rtp_session	    rtp;	    /**< RTP session.		    */
-//} pjmedia_vid_channel;
-//
-//
-///**
-// * This structure describes media stream.
-// * A media stream is bidirectional media transmission between two endpoints.
-// * It consists of two channels, i.e. encoding and decoding channels.
-// * A media stream corresponds to a single "m=" line in a SDP session
-// * description.
-// */
-//struct pjmedia_vid_stream
-//{
-//    pj_pool_t		    *own_pool;      /**< Internal pool.		    */
-//    pjmedia_endpt	    *endpt;	    /**< Media endpoint.	    */
-//    pjmedia_vid_codec_mgr   *codec_mgr;	    /**< Codec manager.		    */
-//    pjmedia_vid_stream_info  info;	    /**< Stream info.		    */
-//
-//    pjmedia_vid_channel	    *enc;	    /**< Encoding channel.	    */
-//    pjmedia_vid_channel	    *dec;	    /**< Decoding channel.	    */
-//
-//    pjmedia_dir		     dir;	    /**< Stream direction.	    */
-//    void		    *user_data;	    /**< User data.		    */
-//    pj_str_t		     name;	    /**< Stream name		    */
-//    pj_str_t		     cname;	    /**< SDES CNAME		    */
-//
-//    pjmedia_transport	    *transport;	    /**< Stream transport.	    */
-//    unsigned		     send_err_cnt;  /**< Send error count.          */
-//
-//    pj_mutex_t		    *jb_mutex;
-//    pjmedia_jbuf	    *jb;	    /**< Jitter buffer.		    */
-//    char		     jb_last_frm;   /**< Last frame type from jb    */
-//    unsigned		     jb_last_frm_cnt;/**< Last JB frame type counter*/
-//
-//    pjmedia_rtcp_session     rtcp;	    /**< RTCP for incoming RTP.	    */
-//    pj_uint32_t		     rtcp_last_tx;  /**< RTCP tx time in timestamp  */
-//    pj_uint32_t		     rtcp_interval; /**< Interval, in timestamp.    */
-//    pj_bool_t		     initial_rr;    /**< Initial RTCP RR sent	    */
-//    pj_bool_t                rtcp_sdes_bye_disabled;/**< Send RTCP SDES/BYE?*/
-//    void		    *out_rtcp_pkt;  /**< Outgoing RTCP packet.	    */
-//    unsigned		     out_rtcp_pkt_size;
-//					    /**< Outgoing RTCP packet size. */
-//
-//    unsigned		     dec_max_size;  /**< Size of decoded/raw picture*/
-//    pjmedia_ratio	     dec_max_fps;   /**< Max fps of decoding dir.   */
-//    pjmedia_frame            dec_frame;	    /**< Current decoded frame.     */
-//    pjmedia_event            fmt_event;	    /**< Buffered fmt_changed event
-//                                                 to avoid deadlock	    */
-//    pjmedia_event            miss_keyframe_event;
-//					    /**< Buffered missing keyframe
-//                                                 event for delayed republish*/
-//
-//    unsigned		     frame_size;    /**< Size of encoded base frame.*/
-//    unsigned		     frame_ts_len;  /**< Frame length in timestamp. */
-//
-//    unsigned		     rx_frame_cnt;  /**< # of array in rx_frames    */
-//    pjmedia_frame	    *rx_frames;	    /**< Temp. buffer for incoming
-//					         frame assembly.	    */
-//    pj_bool_t		     force_keyframe;/**< Forced to encode keyframe? */
-//    unsigned		     num_keyframe;  /**< The number of keyframe needed
-//						 to be sent, after the stream
-//						 is created. */
-//    pj_timestamp	     last_keyframe_tx;
-//					    /**< Timestamp of the last
-//						 keyframe. */
-//
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-//    pj_bool_t		     use_ka;	       /**< Stream keep-alive with non-
-//						    codec-VAD mechanism is
-//						    enabled?		    */
-//    pj_timestamp	     last_frm_ts_sent; /**< Timestamp of last sending
-//					            packet		    */
-//#endif
-//
-//#if TRACE_JB
-//    pj_oshandle_t	     trace_jb_fd;   /**< Jitter tracing file handle.*/
-//    char		    *trace_jb_buf;  /**< Jitter tracing buffer.	    */
-//#endif
-//
-//    pjmedia_vid_codec	    *codec;	    /**< Codec instance being used. */
-//    pj_uint32_t		     last_dec_ts;   /**< Last decoded timestamp.    */
-//    int			     last_dec_seq;  /**< Last decoded sequence.     */
-//    pj_status_t		     rtp_rx_last_err; /**< Last RTP recv() error.   */
-//
-//    pj_timestamp	     ts_freq;	    /**< Timestamp frequency.	    */
-//
-//    pj_sockaddr		     rem_rtp_addr;  /**< Remote RTP address	    */
-//    unsigned		     rem_rtp_flag;  /**< Indicator flag about
-//						 packet from this addr.
-//						 0=no pkt, 1=good ssrc pkts,
-//						 2=bad ssrc pkts	    */
-//    pj_sockaddr		     rtp_src_addr;  /**< Actual packet src addr.    */
-//    unsigned		     rtp_src_cnt;   /**< How many pkt from this addr*/
-//
-//#if TRACE_RC
-//    unsigned		     rc_total_sleep;
-//    unsigned		     rc_total_pkt;
-//    unsigned		     rc_total_img;
-//    pj_timestamp	     tx_start;
-//    pj_timestamp	     tx_end;
-//
-//    pj_bool_t                   thread_quit;
-//    pj_bool_t                   thread_exited;
-//    pj_bool_t                   thread_initialized;
-//    pj_thread_t                *thread;
-//    pj_pool_t                  *cv_pool;    /**< Video thread memory pool       */
-//    pjmedia_h264_packetizer *pktz;
-//    pj_bool_t has_more_data;
-//
-//    unsigned             enc_frame_size;
-//    unsigned             enc_processed;
-//    pj_uint8_t          *enc_frame_whole;
-//
-//    void                *enc_buf;
-//    unsigned             enc_buf_size;
-//#endif
-//    
-//    
-//    
-//    //    
-////    pj_bool_t                   thread_quit;
-////    pj_bool_t                   thread_exited;
-////    pj_bool_t                   thread_initialized;
-////    pj_thread_t                *thread;
-////    pj_pool_t                  *cv_pool;    /**< Video thread memory pool       */
-////    pj_pool_t		    *encoder_pool;
-////    pjmedia_h264_packetizer *pktz;
-////    pj_bool_t has_more_data;
-////    unsigned             enc_frame_size;
-////    unsigned             enc_processed;
-////    pj_uint8_t          *enc_frame_whole;
-////    pj_uint8_t          *enc_buf;
-//////    void                *enc_buf;
-////    unsigned             enc_buf_size;
-//    HISI_SDK_APP_S *hisi_app_config;
-//};
-//
-//pj_status_t log_bytes1(const void *object, size_t size) {
-//    // This is for C++; in C just drop the static_cast<>() and assign.
-//    // const unsigned char * const bytes = static_cast<const unsigned char *>(object);
-//    const unsigned char * const bytes = object;
-//    size_t i;
-//    char str[200];
-////    pj_str_t pstr;
-////    pj_snprintf()
-////            
-////    pstr.ptr = (char*) pj_pool_alloc(pool, size);
-////    pstr.slen = pj_ansi_snprintf(name.ptr, M, "%s%p", type_name, stream);
-//    
-//    sprintf(str, "%s", "");
-//    int edge = 99;
-//
-//    // for(i = 0; i < size; i++)
-//    if (size > edge) {
-//        for(i = 0; i < edge; i++) {
-////             printf("%u: %02x ", i, bytes[i]);
-//            if (i == 0) {
-//                
-//                sprintf(str, "%02x", bytes[i]);
-//            } else {
-//                sprintf(str, "%s %02x", str, bytes[i]);
-//            }
-//
-//        }
-//    } else {
-//        for(i = 0; i < size; i++) {
-//            // printf("%02x ", bytes[i]);
-//            if (i == 0) {
-//                sprintf(str, "%02x", bytes[i]);
-//            } else {
-//                sprintf(str, "%s %02x", str, bytes[i]);
-//            }
-//            // sprintf(str, "%s %02x", str, bytes[i]);
-//        }
-//    }
-//    // printf("[ ");
-//    // printf("]\n");
-//    PJ_LOG(4,(THIS_FILE, "size: %d, [ %s ]", size, str));
-//    return PJ_SUCCESS;
-//}
-//
-//static int encode_more(pjmedia_vid_stream *stream, unsigned out_size, pjmedia_frame *output, pj_bool_t *has_more) {
-//    const pj_uint8_t *payload;
-//    pj_size_t payload_len;
-//    pj_status_t status;
-//
-////    PJ_LOG(3, (THIS_FILE, "encode_more: out_size=%u, output->size=%u, has_more=%u", out_size, output->size, *has_more));
-//
-//    PJ_ASSERT_RETURN(stream && out_size && output && has_more, PJ_EINVAL);
-//
-//    pjmedia_vid_stream* strm = (pjmedia_vid_stream *) stream;
-//
-////    PJ_LOG(3, (THIS_FILE, "encode_more: strm->enc_processed=%u, strm->enc_frame_size=%u, strm->enc_buf_size=%u", 
-////    strm->enc_processed, strm->enc_frame_size, strm->enc_buf_size));
-//    
-//    if (strm->enc_processed < strm->enc_frame_size) {
-////         PJ_LOG(4, (THIS_FILE, "%s: h264_passthrough_data->enc_processed < h264_passthrough_data->enc_frame_size", __FUNCTION__));
-//        /* We have outstanding frame in packetizer */
-//        status = pjmedia_h264_packetize(strm->pktz,
-//                                        strm->enc_frame_whole,
-//                                        strm->enc_frame_size,
-//                                        &strm->enc_processed,
-//                                        &payload, &payload_len);
-//        if (status != PJ_SUCCESS) {
-//            /* Reset */
-//            strm->enc_frame_size = strm->enc_processed = 0;
-//            *has_more = (strm->enc_processed <
-//                    strm->enc_frame_size);
-//            // *has_more = (strm->enc_processed <
-//            //         strm->enc_frame_size) ||
-//            //     (strm->ilayer < strm->iLayerNum);
-//
-//            PJ_PERROR(3,(THIS_FILE, status, "pjmedia_h264_packetize() error"));
-//            return status;
-//        }
-//
-//        PJ_ASSERT_RETURN(payload_len <= out_size, PJMEDIA_CODEC_EFRMTOOSHORT);
-//
-//        output->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//        pj_memcpy(output->buf, payload, payload_len);
-//        output->size = payload_len;
-//
-//        // if (h264_passthrough_data->bsi.eFrameType == videoFrameTypeIDR) {
-//        //    output->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-//        // }
-//        // if (strm->isIDR == PJ_TRUE) {
-//        //     // PJ_LOG(4, (THIS_FILE, "%s: This is keyframe", __FUNCTION__));
-//        //     output->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-//        //     strm->isIDR = PJ_FALSE;
-//        // } else {
-//        //     // PJ_LOG(4, (THIS_FILE, "%s: This is not keyframe", __FUNCTION__));
-//        // }
-//
-//        // PJ_LOG(4, (THIS_FILE, "%s: strm->enc_processed   = %u of %u", __FUNCTION__, strm->enc_processed, strm->enc_frame_size));
-//        // strm->ilayer++;
-//        *has_more = (strm->enc_processed < strm->enc_frame_size);
-//        // *has_more = (strm->enc_processed < strm->enc_frame_size) ||
-//        //         (strm->ilayer < strm->iLayerNum);
-//        // if (*has_more == PJ_TRUE) {
-//        //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_TRUE", __FUNCTION__));
-//        // } else {
-//        //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_FALSE", __FUNCTION__));
-//        // }
-//        return PJ_SUCCESS;
-//    }
-//    MY_DBG();
-//    strm->enc_frame_size = strm->enc_buf_size;
-//
-//    strm->enc_frame_whole = strm->enc_buf;
-//    // h264_passthrough_data->enc_frame_whole = pLayerBsInfo->pBsBuf;
-//    strm->enc_processed = 0;
-//
-//    status = pjmedia_h264_packetize(strm->pktz,
-//                    strm->enc_frame_whole,
-//                    strm->enc_frame_size,
-//                    &strm->enc_processed,
-//                    &payload, &payload_len);
-//    if (status != PJ_SUCCESS) {
-//        /* Reset */
-//        strm->enc_frame_size = strm->enc_processed = 0;
-//        // *has_more = (strm->ilayer < strm->iLayerNum);
-//
-//        PJ_PERROR(3,(THIS_FILE, status, "pjmedia_h264_packetize() error [2]"));
-//        return status;
-//    }
-//
-//    PJ_ASSERT_RETURN(payload_len <= out_size, PJMEDIA_CODEC_EFRMTOOSHORT);
-//
-//    output->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//    pj_memcpy(output->buf, payload, payload_len);
-//    output->size = payload_len;
-//
-//
-//    *has_more = (strm->enc_processed < strm->enc_frame_size); // ||
-//            // (strm->ilayer < strm->iLayerNum);
-//    // if (*has_more == PJ_TRUE) {
-//    //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_TRUE", __FUNCTION__));
-//    // } else {
-//    //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_FALSE", __FUNCTION__));
-//    // }
-//    return PJ_SUCCESS;
-//}
-//
-//static int encode_begin(pjmedia_vid_stream *stream, const pjmedia_vid_encode_opt *opt,
-//    const pjmedia_frame *input, unsigned out_size, pjmedia_frame *output, pj_bool_t *has_more) {
-//
-////     PJ_LOG(3, (THIS_FILE, "encode_begin, input->size=%d", input->size));
-//
-//    PJ_ASSERT_RETURN(stream && input && out_size && output && has_more,
-//                     PJ_EINVAL);
-////    log_bytes1(input->buf, input->size);
-//    // const pjmedia_frame *input_ = (const pjmedia_frame*) input;
-//    pjmedia_vid_stream* strm = (pjmedia_vid_stream *) stream;
-//
-//    strm->enc_buf_size = input->size;
-////    strm->enc_buf = pj_pool_alloc(strm->cv_pool, strm->enc_buf_size);
-//    
-//    strm->enc_buf = pj_pool_calloc(strm->cv_pool, strm->enc_buf_size, sizeof(unsigned char));
-//    if (NULL == strm->enc_buf) {
-//        PJ_LOG(4, (THIS_FILE, "%s: malloc stream pack failed!", __FUNCTION__));
-//        return PJ_ENOMEM;
-//    }
-//    
-////    strm->enc_buf = pj_pool_alloc(strm->cv_pool, strm->enc_buf_size);
-//    strm->enc_frame_size = strm->enc_processed = 0;
-//
-//
-//
-//    // h264_passthrough_data->enc_buf = input->buf;
-//    pj_memcpy(strm->enc_buf , input->buf, strm->enc_buf_size);
-////    log_bytes1(frame->buf, frame->size);
-////    log_bytes1(input->buf, input->size);
-////    log_bytes1(strm->enc_buf, strm->enc_buf_size);
-//    return encode_more(strm, out_size, output, has_more);
-////    return PJ_SUCCESS;
-//
-//}
-//
-///* Prototypes */
-//static pj_status_t decode_frame(pjmedia_vid_stream *stream,
-//                                pjmedia_frame *frame);
-//
-///*
-// * Print error.
-// */
-//static void stream_perror(const char *sender, const char *title,
-//			  pj_status_t status)
-//{
-//    char errmsg[PJ_ERR_MSG_SIZE];
-//
-//    pj_strerror(status, errmsg, sizeof(errmsg));
-//    PJ_LOG(4,(sender, "%s: %s [err:%d]", title, errmsg, status));
-//}
-//
-//
-//static pj_status_t send_rtcp(pjmedia_vid_stream *stream,
-//			     pj_bool_t with_sdes,
-//			     pj_bool_t with_bye);
-//
-//static void on_rx_rtcp( void *data,
-//                        void *pkt,
-//                        pj_ssize_t bytes_read);
-//
-//#if TRACE_JB
-//
-//PJ_INLINE(int) trace_jb_print_timestamp(char **buf, pj_ssize_t len)
-//{
-//    pj_time_val now;
-//    pj_parsed_time ptime;
-//    char *p = *buf;
-//
-//    if (len < 14)
-//	return -1;
-//
-//    pj_gettimeofday(&now);
-//    pj_time_decode(&now, &ptime);
-//    p += pj_utoa_pad(ptime.hour, p, 2, '0');
-//    *p++ = ':';
-//    p += pj_utoa_pad(ptime.min, p, 2, '0');
-//    *p++ = ':';
-//    p += pj_utoa_pad(ptime.sec, p, 2, '0');
-//    *p++ = '.';
-//    p += pj_utoa_pad(ptime.msec, p, 3, '0');
-//    *p++ = ',';
-//
-//    *buf = p;
-//
-//    return 0;
-//}
-//
-//PJ_INLINE(int) trace_jb_print_state(pjmedia_vid_stream *stream,
-//				    char **buf, pj_ssize_t len)
-//{
-//    char *p = *buf;
-//    char *endp = *buf + len;
-//    pjmedia_jb_state state;
-//
-//    pjmedia_jbuf_get_state(stream->jb, &state);
-//
-//    len = pj_ansi_snprintf(p, endp-p, "%d, %d, %d",
-//			   state.size, state.burst, state.prefetch);
-//    if ((len < 0) || (len >= endp-p))
-//	return -1;
-//
-//    p += len;
-//    *buf = p;
-//    return 0;
-//}
-//
-//static void trace_jb_get(pjmedia_vid_stream *stream, pjmedia_jb_frame_type ft,
-//			 pj_size_t fsize)
-//{
-//    char *p = stream->trace_jb_buf;
-//    char *endp = stream->trace_jb_buf + PJ_LOG_MAX_SIZE;
-//    pj_ssize_t len = 0;
-//    const char* ft_st;
-//
-//    if (!TRACE_JB_OPENED(stream))
-//	return;
-//
-//    /* Print timestamp. */
-//    if (trace_jb_print_timestamp(&p, endp-p))
-//	goto on_insuff_buffer;
-//
-//    /* Print frame type and size */
-//    switch(ft) {
-//	case PJMEDIA_JB_MISSING_FRAME:
-//	    ft_st = "missing";
-//	    break;
-//	case PJMEDIA_JB_NORMAL_FRAME:
-//	    ft_st = "normal";
-//	    break;
-//	case PJMEDIA_JB_ZERO_PREFETCH_FRAME:
-//	    ft_st = "prefetch";
-//	    break;
-//	case PJMEDIA_JB_ZERO_EMPTY_FRAME:
-//	    ft_st = "empty";
-//	    break;
-//	default:
-//	    ft_st = "unknown";
-//	    break;
-//    }
-//
-//    /* Print operation, size, frame count, frame type */
-//    len = pj_ansi_snprintf(p, endp-p, "GET,%d,1,%s,,,,", fsize, ft_st);
-//    if ((len < 0) || (len >= endp-p))
-//	goto on_insuff_buffer;
-//    p += len;
-//
-//    /* Print JB state */
-//    if (trace_jb_print_state(stream, &p, endp-p))
-//	goto on_insuff_buffer;
-//
-//    /* Print end of line */
-//    if (endp-p < 2)
-//	goto on_insuff_buffer;
-//    *p++ = '\n';
-//
-//    /* Write and flush */
-//    len = p - stream->trace_jb_buf;
-//    pj_file_write(stream->trace_jb_fd, stream->trace_jb_buf, &len);
-//    pj_file_flush(stream->trace_jb_fd);
-//    return;
-//
-//on_insuff_buffer:
-//    pj_assert(!"Trace buffer too small, check PJ_LOG_MAX_SIZE!");
-//}
-//
-//static void trace_jb_put(pjmedia_vid_stream *stream,
-//			 const pjmedia_rtp_hdr *hdr,
-//			 unsigned payloadlen, unsigned frame_cnt)
-//{
-//    char *p = stream->trace_jb_buf;
-//    char *endp = stream->trace_jb_buf + PJ_LOG_MAX_SIZE;
-//    pj_ssize_t len = 0;
-//
-//    if (!TRACE_JB_OPENED(stream))
-//	return;
-//
-//    /* Print timestamp. */
-//    if (trace_jb_print_timestamp(&p, endp-p))
-//	goto on_insuff_buffer;
-//
-//    /* Print operation, size, frame count, RTP info */
-//    len = pj_ansi_snprintf(p, endp-p,
-//			   "PUT,%d,%d,,%d,%d,%d,",
-//			   payloadlen, frame_cnt,
-//			   pj_ntohs(hdr->seq), pj_ntohl(hdr->ts), hdr->m);
-//    if ((len < 0) || (len >= endp-p))
-//	goto on_insuff_buffer;
-//    p += len;
-//
-//    /* Print JB state */
-//    if (trace_jb_print_state(stream, &p, endp-p))
-//	goto on_insuff_buffer;
-//
-//    /* Print end of line */
-//    if (endp-p < 2)
-//	goto on_insuff_buffer;
-//    *p++ = '\n';
-//
-//    /* Write and flush */
-//    len = p - stream->trace_jb_buf;
-//    pj_file_write(stream->trace_jb_fd, stream->trace_jb_buf, &len);
-//    pj_file_flush(stream->trace_jb_fd);
-//    return;
-//
-//on_insuff_buffer:
-//    pj_assert(!"Trace buffer too small, check PJ_LOG_MAX_SIZE!");
-//}
-//
-//#endif /* TRACE_JB */
-//
-//static void dump_port_info(const pjmedia_vid_channel *chan,
-//                           const char *event_name)
-//{
-//    const pjmedia_port_info *pi = &chan->port.info;
-//    char fourcc_name[5];
-//
-//    PJ_LOG(5, (pi->name.ptr,
-//	       " %s format %s: %dx%d %s%s %d/%d(~%d)fps",
-//	       (chan->dir==PJMEDIA_DIR_DECODING? "Decoding":"Encoding"),
-//	       event_name,
-//	       pi->fmt.det.vid.size.w, pi->fmt.det.vid.size.h,
-//	       pjmedia_fourcc_name(pi->fmt.id, fourcc_name),
-//	       (chan->dir==PJMEDIA_DIR_ENCODING?"->":"<-"),
-//	       pi->fmt.det.vid.fps.num, pi->fmt.det.vid.fps.denum,
-//	       pi->fmt.det.vid.fps.num/pi->fmt.det.vid.fps.denum));
-//}
-//
-///*
-// * Handle events from stream components.
-// */
-//static pj_status_t stream_event_cb(pjmedia_event *event,
-//                                   void *user_data)
-//{
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*)user_data;
-//
-//    if (event->epub == stream->codec) {
-//	/* This is codec event */
-//	switch (event->type) {
-//	case PJMEDIA_EVENT_FMT_CHANGED:
-//	    /* Copy the event to avoid deadlock if we publish the event
-//	     * now. This happens because fmt_event may trigger restart
-//	     * while we're still holding the jb_mutex.
-//	     */
-//	    pj_memcpy(&stream->fmt_event, event, sizeof(*event));
-//	    return PJ_SUCCESS;
-//
-//	case PJMEDIA_EVENT_KEYFRAME_MISSING:
-//	    /* Republish this event later from get_frame(). */
-//	    pj_memcpy(&stream->miss_keyframe_event, event, sizeof(*event));
-//	    return PJ_SUCCESS;
-//
-//	default:
-//	    break;
-//	}
-//    }
-//
-//    return pjmedia_event_publish(NULL, stream, event, 0);
-//}
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA != 0
-///*
-// * Send keep-alive packet using non-codec frame.
-// */
-//static void send_keep_alive_packet(pjmedia_vid_stream *stream)
-//{
-//#if PJMEDIA_STREAM_ENABLE_KA == PJMEDIA_STREAM_KA_EMPTY_RTP
-//
-//    /* Keep-alive packet is empty RTP */
-//    pjmedia_vid_channel *channel = stream->enc;
-//    pj_status_t status;
-//    void *pkt;
-//    int pkt_len;
-//
-//    TRC_((channel->port.info.name.ptr,
-//	  "Sending keep-alive (RTCP and empty RTP)"));
-//
-//    /* Send RTP */
-//    status = pjmedia_rtp_encode_rtp( &stream->enc->rtp,
-//				     stream->enc->pt, 0,
-//				     1,
-//				     0,
-//				     (const void**)&pkt,
-//				     &pkt_len);
-//    pj_assert(status == PJ_SUCCESS);
-//
-//    pj_memcpy(stream->enc->buf, pkt, pkt_len);
-//    pjmedia_transport_send_rtp(stream->transport, stream->enc->buf,
-//			       pkt_len);
-//
-//    /* Send RTCP */
-//    send_rtcp(stream, PJ_TRUE, PJ_FALSE);
-//
-//    /* Update stats in case the stream is paused */
-//    stream->rtcp.stat.rtp_tx_last_seq = pj_ntohs(stream->enc->rtp.out_hdr.seq);
-//
-//#elif PJMEDIA_STREAM_ENABLE_KA == PJMEDIA_STREAM_KA_USER
-//
-//    /* Keep-alive packet is defined in PJMEDIA_STREAM_KA_USER_PKT */
-//    pjmedia_vid_channel *channel = stream->enc;
-//    int pkt_len;
-//    const pj_str_t str_ka = PJMEDIA_STREAM_KA_USER_PKT;
-//
-//    TRC_((channel->port.info.name.ptr,
-//	  "Sending keep-alive (custom RTP/RTCP packets)"));
-//
-//    /* Send to RTP port */
-//    pj_memcpy(stream->enc->buf, str_ka.ptr, str_ka.slen);
-//    pkt_len = str_ka.slen;
-//    pjmedia_transport_send_rtp(stream->transport, stream->enc->buf,
-//			       pkt_len);
-//
-//    /* Send to RTCP port */
-//    pjmedia_transport_send_rtcp(stream->transport, stream->enc->buf,
-//			        pkt_len);
-//
-//#else
-//
-//    PJ_UNUSED_ARG(stream);
-//
-//#endif
-//}
-//#endif	/* defined(PJMEDIA_STREAM_ENABLE_KA) */
-//
-//
-//static pj_status_t send_rtcp(pjmedia_vid_stream *stream,
-//			     pj_bool_t with_sdes,
-//			     pj_bool_t with_bye)
-//{
-//    void *sr_rr_pkt;
-//    pj_uint8_t *pkt;
-//    int len, max_len;
-//    pj_status_t status;
-//
-//    /* Build RTCP RR/SR packet */
-//    pjmedia_rtcp_build_rtcp(&stream->rtcp, &sr_rr_pkt, &len);
-//
-//    if (with_sdes || with_bye) {
-//	pkt = (pj_uint8_t*) stream->out_rtcp_pkt;
-//	pj_memcpy(pkt, sr_rr_pkt, len);
-//	max_len = stream->out_rtcp_pkt_size;
-//    } else {
-//	pkt = (pj_uint8_t*)sr_rr_pkt;
-//	max_len = len;
-//    }
-//
-//    /* Build RTCP SDES packet */
-//    if (with_sdes) {
-//	pjmedia_rtcp_sdes sdes;
-//	pj_size_t sdes_len;
-//
-//	pj_bzero(&sdes, sizeof(sdes));
-//	sdes.cname = stream->cname;
-//	sdes_len = max_len - len;
-//	status = pjmedia_rtcp_build_rtcp_sdes(&stream->rtcp, pkt+len,
-//					      &sdes_len, &sdes);
-//	if (status != PJ_SUCCESS) {
-//	    PJ_PERROR(4,(stream->name.ptr, status,
-//        			     "Error generating RTCP SDES"));
-//	} else {
-//	    len += (int)sdes_len;
-//	}
-//    }
-//
-//    /* Build RTCP BYE packet */
-//    if (with_bye) {
-//	pj_size_t bye_len;
-//
-//	bye_len = max_len - len;
-//	status = pjmedia_rtcp_build_rtcp_bye(&stream->rtcp, pkt+len,
-//					     &bye_len, NULL);
-//	if (status != PJ_SUCCESS) {
-//	    PJ_PERROR(4,(stream->name.ptr, status,
-//        			     "Error generating RTCP BYE"));
-//	} else {
-//	    len += (int)bye_len;
-//	}
-//    }
-//
-//    /* Send! */
-//    status = pjmedia_transport_send_rtcp(stream->transport, pkt, len);
-//
-//    return status;
-//}
-//
-//
-///**
-// * check_tx_rtcp()
-// *
-// * This function is can be called by either put_frame() or get_frame(),
-// * to transmit periodic RTCP SR/RR report.
-// */
-//static void check_tx_rtcp(pjmedia_vid_stream *stream, pj_uint32_t timestamp)
-//{
-//    /* Note that timestamp may represent local or remote timestamp,
-//     * depending on whether this function is called from put_frame()
-//     * or get_frame().
-//     */
-//
-//
-//    if (stream->rtcp_last_tx == 0) {
-//
-//	stream->rtcp_last_tx = timestamp;
-//
-//    } else if (timestamp - stream->rtcp_last_tx >= stream->rtcp_interval) {
-//	pj_status_t status;
-//
-//	status = send_rtcp(stream, !stream->rtcp_sdes_bye_disabled, PJ_FALSE);
-//	if (status != PJ_SUCCESS) {
-//	    PJ_PERROR(4,(stream->name.ptr, status,
-//        		 "Error sending RTCP"));
-//	}
-//
-//	stream->rtcp_last_tx = timestamp;
-//    }
-//}
-//
-//
-//#if 0
-//static void dump_bin(const char *buf, unsigned len)
-//{
-//    unsigned i;
-//
-//    PJ_LOG(3,(THIS_FILE, "begin dump"));
-//    for (i=0; i<len; ++i) {
-//	int j;
-//	char bits[9];
-//	unsigned val = buf[i] & 0xFF;
-//
-//	bits[8] = '\0';
-//	for (j=0; j<8; ++j) {
-//	    if (val & (1 << (7-j)))
-//		bits[j] = '1';
-//	    else
-//		bits[j] = '0';
-//	}
-//
-//	PJ_LOG(3,(THIS_FILE, "%2d %s [%d]", i, bits, val));
-//    }
-//    PJ_LOG(3,(THIS_FILE, "end dump"));
-//}
-//#endif
-//
-//
-///*
-// * This callback is called by stream transport on receipt of packets
-// * in the RTP socket.
-// */
-//static void on_rx_rtp( pjmedia_tp_cb_param *param)
-//{
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*) param->user_data;
-//    void *pkt = param->pkt;
-//    pj_ssize_t bytes_read = param->size;
-//    pjmedia_vid_channel *channel = stream->dec;
-//    const pjmedia_rtp_hdr *hdr;
-//    const void *payload;
-//    unsigned payloadlen;
-//    pjmedia_rtp_status seq_st;
-//    pj_status_t status;
-//    pj_bool_t pkt_discarded = PJ_FALSE;
-//
-//    /* Check for errors */
-//    if (bytes_read < 0) {
-//	status = (pj_status_t)-bytes_read;
-//	if (status == PJ_STATUS_FROM_OS(OSERR_EWOULDBLOCK)) {
-//	    return;
-//	}
-//	if (stream->rtp_rx_last_err != status) {
-//	    char errmsg[PJ_ERR_MSG_SIZE];
-//	    pj_strerror(status, errmsg, sizeof(errmsg));
-//	    PJ_LOG(4,(channel->port.info.name.ptr,
-//		      "Unable to receive RTP packet, recv() returned %d: %s",
-//		      status, errmsg));
-//	    stream->rtp_rx_last_err = status;
-//	}
-//	return;
-//    } else {
-//	stream->rtp_rx_last_err = PJ_SUCCESS;
-//    }
-//
-//    /* Ignore keep-alive packets */
-//    if (bytes_read < (pj_ssize_t) sizeof(pjmedia_rtp_hdr))
-//	return;
-//
-//    /* Update RTP and RTCP session. */
-//    status = pjmedia_rtp_decode_rtp(&channel->rtp, pkt, (int)bytes_read,
-//				    &hdr, &payload, &payloadlen);
-//    if (status != PJ_SUCCESS) {
-//	LOGERR_((channel->port.info.name.ptr, "RTP decode error", status));
-//	stream->rtcp.stat.rx.discard++;
-//	return;
-//    }
-//
-//    /* Check if multiplexing is allowed and the payload indicates RTCP. */
-//    if (stream->info.rtcp_mux && hdr->pt >= 64 && hdr->pt <= 95) {
-//    	on_rx_rtcp(stream, pkt, bytes_read);
-//    	return;
-//    }
-//
-//    /* Ignore the packet if decoder is paused */
-//    if (channel->paused)
-//	goto on_return;
-//
-//    /* Update RTP session (also checks if RTP session can accept
-//     * the incoming packet.
-//     */
-//    pjmedia_rtp_session_update2(&channel->rtp, hdr, &seq_st, PJ_TRUE);
-//    if (seq_st.status.value) {
-//	TRC_  ((channel->port.info.name.ptr,
-//		"RTP status: badpt=%d, badssrc=%d, dup=%d, "
-//		"outorder=%d, probation=%d, restart=%d",
-//		seq_st.status.flag.badpt,
-//		seq_st.status.flag.badssrc,
-//		seq_st.status.flag.dup,
-//		seq_st.status.flag.outorder,
-//		seq_st.status.flag.probation,
-//		seq_st.status.flag.restart));
-//
-//	if (seq_st.status.flag.badpt) {
-//	    PJ_LOG(4,(channel->port.info.name.ptr,
-//		      "Bad RTP pt %d (expecting %d)",
-//		      hdr->pt, channel->rtp.out_pt));
-//	}
-//
-//	if (!stream->info.has_rem_ssrc && seq_st.status.flag.badssrc) {
-//	    PJ_LOG(4,(channel->port.info.name.ptr,
-//		      "Changed RTP peer SSRC %d (previously %d)",
-//		      channel->rtp.peer_ssrc, stream->rtcp.peer_ssrc));
-//	    stream->rtcp.peer_ssrc = channel->rtp.peer_ssrc;
-//	}
-//
-//
-//    }
-//
-//    /* Skip bad RTP packet */
-//    if (seq_st.status.flag.bad) {
-//	pkt_discarded = PJ_TRUE;
-//	goto on_return;
-//    }
-//
-//    /* Ignore if payloadlen is zero */
-//    if (payloadlen == 0) {
-//	pkt_discarded = PJ_TRUE;
-//	goto on_return;
-//    }
-//
-//    /* See if source address of RTP packet is different than the
-//     * configured address, and check if we need to tell the
-//     * media transport to switch RTP remote address.
-//     */
-//    if (param->src_addr) {
-//        pj_bool_t badssrc = (stream->info.has_rem_ssrc &&
-//        		     seq_st.status.flag.badssrc);
-//
-//	if (pj_sockaddr_cmp(&stream->rem_rtp_addr, param->src_addr) == 0) {
-//	    /* We're still receiving from rem_rtp_addr. */
-//	    stream->rtp_src_cnt = 0;
-//	    stream->rem_rtp_flag = badssrc? 2: 1;
-//	} else {
-//	    stream->rtp_src_cnt++;
-//
-//	    if (stream->rtp_src_cnt < PJMEDIA_RTP_NAT_PROBATION_CNT) {
-//	    	if (stream->rem_rtp_flag == 1 ||
-//	    	    (stream->rem_rtp_flag == 2 && badssrc))
-//	    	{
-//		    /* Only discard if:
-//		     * - we have ever received packet with good ssrc from
-//		     *   remote address (rem_rtp_addr), or
-//		     * - we have ever received packet with bad ssrc from
-//		     *   remote address and this packet also has bad ssrc.
-//		     */
-//	    	    pkt_discarded = PJ_TRUE;
-//	    	    goto on_return;
-//	    	}
-//	    	if (stream->info.has_rem_ssrc && !seq_st.status.flag.badssrc
-//	    	    && stream->rem_rtp_flag != 1)
-//	    	{
-//	    	    /* Immediately switch if we receive packet with the
-//	    	     * correct ssrc AND we never receive packets with
-//	    	     * good ssrc from rem_rtp_addr.
-//	    	     */
-//	    	    param->rem_switch = PJ_TRUE;
-//	    	}
-//	    } else {
-//	        /* Switch. We no longer receive packets from rem_rtp_addr. */
-//	        param->rem_switch = PJ_TRUE;
-//	    }
-//
-//	    if (param->rem_switch) {
-//		/* Set remote RTP address to source address */
-//		pj_sockaddr_cp(&stream->rem_rtp_addr, param->src_addr);
-//
-//		/* Reset counter and flag */
-//		stream->rtp_src_cnt = 0;
-//		stream->rem_rtp_flag = badssrc? 2: 1;
-//
-//		/* Update RTCP peer ssrc */
-//	    	stream->rtcp.peer_ssrc = pj_ntohl(hdr->ssrc);
-//	    }
-//	}
-//    }
-//
-//    pj_mutex_lock( stream->jb_mutex );
-//
-//    /* Quickly see if there may be a full picture in the jitter buffer, and
-//     * decode them if so. More thorough check will be done in decode_frame().
-//     */
-//    if ((pj_ntohl(hdr->ts) != stream->dec_frame.timestamp.u32.lo) || hdr->m) {
-//	if (PJMEDIA_VID_STREAM_SKIP_PACKETS_TO_REDUCE_LATENCY) {
-//	    /* Always decode whenever we have picture in jb and
-//	     * overwrite already decoded picture if necessary
-//	     */
-//	    pj_size_t old_size = stream->dec_frame.size;
-//
-//	    stream->dec_frame.size = stream->dec_max_size;
-//	    if (decode_frame(stream, &stream->dec_frame) != PJ_SUCCESS) {
-//		stream->dec_frame.size = old_size;
-//	    }
-//	} else {
-//	    /* Only decode if we don't already have decoded one,
-//	     * unless the jb is full.
-//	     */
-//	    pj_bool_t can_decode = PJ_FALSE;
-//
-//	    if (pjmedia_jbuf_is_full(stream->jb)) {
-//		can_decode = PJ_TRUE;
-//	    }
-//	    else if (stream->dec_frame.size == 0) {
-//		can_decode = PJ_TRUE;
-//	    }
-//
-//	    if (can_decode) {
-//		stream->dec_frame.size = stream->dec_max_size;
-//		if (decode_frame(stream, &stream->dec_frame) != PJ_SUCCESS) {
-//		    stream->dec_frame.size = 0;
-//		}
-//	    }
-//	}
-//    }
-//
-//    /* Put "good" packet to jitter buffer, or reset the jitter buffer
-//     * when RTP session is restarted.
-//     */
-//    if (seq_st.status.flag.restart) {
-//	status = pjmedia_jbuf_reset(stream->jb);
-//	PJ_LOG(4,(channel->port.info.name.ptr, "Jitter buffer reset"));
-//    } else {
-//	/* Just put the payload into jitter buffer */
-//	pjmedia_jbuf_put_frame3(stream->jb, payload, payloadlen, 0,
-//				pj_ntohs(hdr->seq), pj_ntohl(hdr->ts), NULL);
-//
-//#if TRACE_JB
-//	trace_jb_put(stream, hdr, payloadlen, count);
-//#endif
-//
-//    }
-//    pj_mutex_unlock( stream->jb_mutex );
-//
-//
-//    /* Check if now is the time to transmit RTCP SR/RR report.
-//     * We only do this when stream direction is "decoding only",
-//     * because otherwise check_tx_rtcp() will be handled by put_frame()
-//     */
-//    if (stream->dir == PJMEDIA_DIR_DECODING) {
-//	check_tx_rtcp(stream, pj_ntohl(hdr->ts));
-//    }
-//
-//    if (status != 0) {
-//	LOGERR_((channel->port.info.name.ptr, "Jitter buffer put() error",
-//		status));
-//	pkt_discarded = PJ_TRUE;
-//	goto on_return;
-//    }
-//
-//on_return:
-//    /* Update RTCP session */
-//    if (stream->rtcp.peer_ssrc == 0)
-//	stream->rtcp.peer_ssrc = channel->rtp.peer_ssrc;
-//
-//    pjmedia_rtcp_rx_rtp2(&stream->rtcp, pj_ntohs(hdr->seq),
-//			 pj_ntohl(hdr->ts), payloadlen, pkt_discarded);
-//
-//    /* Send RTCP RR and SDES after we receive some RTP packets */
-//    if (stream->rtcp.received >= 10 && !stream->initial_rr) {
-//	status = send_rtcp(stream, !stream->rtcp_sdes_bye_disabled,
-//			   PJ_FALSE);
-//        if (status != PJ_SUCCESS) {
-//            PJ_PERROR(4,(stream->name.ptr, status,
-//            	     "Error sending initial RTCP RR"));
-//	} else {
-//	    stream->initial_rr = PJ_TRUE;
-//	}
-//    }
-//}
-//
-//
-///*
-// * This callback is called by stream transport on receipt of packets
-// * in the RTCP socket.
-// */
-//static void on_rx_rtcp( void *data,
-//                        void *pkt,
-//                        pj_ssize_t bytes_read)
-//{
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*) data;
-//
-//    /* Check for errors */
-//    if (bytes_read < 0) {
-//	if (bytes_read != -PJ_STATUS_FROM_OS(OSERR_EWOULDBLOCK)) {
-//	    LOGERR_((stream->cname.ptr, "RTCP recv() error",
-//		    (pj_status_t)-bytes_read));
-//	}
-//	return;
-//    }
-//
-//    pjmedia_rtcp_rx_rtcp(&stream->rtcp, pkt, bytes_read);
-//}
-//
-//static pj_status_t put_frame(pjmedia_port *port,
-//                             pjmedia_frame *frame)
-//{
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*) port->port_data.pdata;
-//    pjmedia_vid_channel *channel = stream->enc;
-//    pj_status_t status = 0;
-//    pjmedia_frame frame_out;
-//    unsigned rtp_ts_len;
-//    void *rtphdr;
-//    int rtphdrlen;
-//    pj_size_t total_sent = 0;
-//    pjmedia_vid_encode_opt enc_opt;
-//    unsigned pkt_cnt = 0;
-//    pj_timestamp initial_time;
-//    pj_timestamp null_ts ={{0}};
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA != 0
-//    /* If the interval since last sending packet is greater than
-//     * PJMEDIA_STREAM_KA_INTERVAL, send keep-alive packet.
-//     */
-//    if (stream->use_ka)
-//    {
-//        pj_uint32_t dtx_duration;
-//
-//        dtx_duration = pj_timestamp_diff32(&stream->last_frm_ts_sent,
-//                           &frame->timestamp);
-//            /* Video stream keep-alive feature is currently disabled. */
-//            /*
-//            if (dtx_duration >
-//            PJMEDIA_STREAM_KA_INTERVAL *
-//                PJMEDIA_PIA_SRATE(&channel->port.info))
-//        {
-//            send_keep_alive_packet(stream);
-//            stream->last_frm_ts_sent = frame->timestamp;
-//        }
-//            */
-//    }
-//#endif
-//
-//    /* Don't do anything if stream is paused */
-//    if (channel->paused) {
-//        return PJ_SUCCESS;
-//    }
-//
-//    /* Get frame length in timestamp unit */
-//    rtp_ts_len = stream->frame_ts_len;
-//
-//    /* Empty video frame? Just update RTP timestamp for now */
-//    if (frame->type==PJMEDIA_FRAME_TYPE_VIDEO && frame->size==0) {
-//    pjmedia_rtp_encode_rtp(&channel->rtp, channel->pt, 1, 0,
-//                   rtp_ts_len,  (const void**)&rtphdr,
-//                   &rtphdrlen);
-//    return PJ_SUCCESS;
-//    }
-//
-//    /* Init frame_out buffer. */
-//    pj_bzero(&frame_out, sizeof(frame_out));
-//    frame_out.buf = ((unsigned char*)channel->buf) + sizeof(pjmedia_rtp_hdr);
-////    frame_out.buf = ((unsigned char*)channel->buf) + sizeof(pjmedia_rtp_hdr);
-//    
-//    
-//    frame_out.size = 0;
-//
-//    /* Check if need to send keyframe. */
-//    if (stream->num_keyframe && (pj_cmp_timestamp(&null_ts, &stream->last_keyframe_tx) != 0))
-//    {
-//        PJ_LOG(4, (THIS_FILE, "%s: Need RequestIDR!", __FUNCTION__));
-//        unsigned elapse_time;
-//        pj_timestamp now;
-//
-//        pj_get_timestamp(&now);
-//
-//        elapse_time = pj_elapsed_msec(&stream->last_keyframe_tx, &now);
-//
-//        if (elapse_time > stream->info.sk_cfg.interval)
-//        {
-//            stream->force_keyframe = PJ_TRUE;
-//            --stream->num_keyframe;
-//        }
-//    }
-//
-//    /* Init encoding option */
-//    pj_bzero(&enc_opt, sizeof(enc_opt));
-//    if (stream->force_keyframe) {
-//        PJ_LOG(4, (THIS_FILE, "%s: Force RequestIDR!", __FUNCTION__));
-//        /* Force encoder to generate keyframe */
-//        enc_opt.force_keyframe = PJ_TRUE;
-//        stream->force_keyframe = PJ_FALSE;
-//        // HI_S32 HI_MPI_VENC_RequestIDR(VENC_CHN VeChn, HI_BOOL bInstant);
-//        // HI_S32 s32Ret = HI_MPI_VENC_RequestIDR(0, 0);
-////        HI_S32 s32Ret = HI_MPI_VENC_RequestIDR(0, 1);
-//        HI_S32 s32Ret = HI_MPI_VENC_RequestIDR(0);
-//        if (HI_SUCCESS != s32Ret) {
-//            PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_RequestIDR failed with %#x!", __FUNCTION__, s32Ret));
-//            return s32Ret;
-//        } else {
-//            PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_RequestIDR SUCCESS!", __FUNCTION__));
-//        }
-//        TRC_((channel->port.info.name.ptr, "Forcing encoder to generate keyframe"));
-//        return PJ_SUCCESS;
-//    }
-//
-//    MY_DBG();
-//    
-////    log_bytes1(frame->buf, frame->size);
-////    PJ_LOG(4, (THIS_FILE, "%s: frame->size: %d", __FUNCTION__, frame->size));
-//    status = encode_begin(stream, &enc_opt, frame,
-//                                            channel->buf_size -
-//                                               sizeof(pjmedia_rtp_hdr),
-//                                            &frame_out,
-//                                            &stream->has_more_data);
-//    if (status != PJ_SUCCESS) {
-//        LOGERR_((channel->port.info.name.ptr,
-//            "Codec encode_begin() error", status));
-//
-//        /* Update RTP timestamp */
-//        pjmedia_rtp_encode_rtp(&channel->rtp, channel->pt, 1, 0,
-//                       rtp_ts_len,  (const void**)&rtphdr,
-//                       &rtphdrlen);
-//        return status;
-//    }
-//    
-//    pj_get_timestamp(&initial_time);
-//    if ((stream->num_keyframe) && ((frame_out.bit_info & PJMEDIA_VID_FRM_KEYFRAME) == PJMEDIA_VID_FRM_KEYFRAME))
-//    {
-//       stream->last_keyframe_tx = initial_time;
-//    }
-//
-//    /* Loop while we have frame to send */
-//    for (;;) {
-////        PJ_LOG(4, (THIS_FILE, "%s: For loop! stream->has_more_data=%u", __FUNCTION__, stream->has_more_data));
-//        status = pjmedia_rtp_encode_rtp(&channel->rtp,
-//                                        channel->pt,
-//                                        (stream->has_more_data == PJ_FALSE ? 1 : 0),
-//                                        (int)frame_out.size,
-//                                        rtp_ts_len,
-//                                        (const void**)&rtphdr,
-//                                        &rtphdrlen);
-//        if (status != PJ_SUCCESS) {
-//            LOGERR_((channel->port.info.name.ptr,
-//                "RTP encode_rtp() error", status));
-//            return status;
-//        }
-//
-//        /* When the payload length is zero, we should not send anything,
-//         * but proceed the rest normally.
-//         */
-//        if (frame_out.size != 0) {
-////            PJ_LOG(4, (THIS_FILE, "%s: frame_out.size != 0", __FUNCTION__));
-//            /* Copy RTP header to the beginning of packet */
-//            pj_memcpy(channel->buf, rtphdr, sizeof(pjmedia_rtp_hdr));
-//            /* Send the RTP packet to the transport. */
-//            status = pjmedia_transport_send_rtp(stream->transport,
-//                            (unsigned char*)channel->buf,
-//                            frame_out.size +
-//                                sizeof(pjmedia_rtp_hdr));
-////            PJ_LOG(4, (THIS_FILE, "%s: pjmedia_transport_send_rtp", __FUNCTION__));
-//            if (status != PJ_SUCCESS) {
-//                enum { COUNT_TO_REPORT = 20 };
-//                if (stream->send_err_cnt++ == 0) {
-//                    LOGERR_((channel->port.info.name.ptr, "Transport send_rtp() error", status));
-//                }
-//                if (stream->send_err_cnt > COUNT_TO_REPORT)
-//                    stream->send_err_cnt = 0;
-//                /* Ignore this error */
-//            }
-//            pjmedia_rtcp_tx_rtp(&stream->rtcp, (unsigned)frame_out.size);
-//            total_sent += frame_out.size;
-//            pkt_cnt++;
-//        }
-////        PJ_LOG(4, (THIS_FILE, "%s: stream->has_more_data=%u", __FUNCTION__, stream->has_more_data));
-//        if (!stream->has_more_data)
-//            break;
-//        // /* Next packets use same timestamp */
-//        rtp_ts_len = 0;
-//        MY_DBG();
-//        frame_out.size = 0;
-//
-//        /* Encode more! */
-//        status = encode_more(stream,
-//            channel->buf_size - sizeof(pjmedia_rtp_hdr), &frame_out, &stream->has_more_data);
-//        if (status != PJ_SUCCESS) {
-//            LOGERR_((channel->port.info.name.ptr,
-//                 "Codec encode_more() error", status));
-//            /* Ignore this error (?) */
-//            break;
-//        }
-//
-//        /* Send rate control */
-//        if (stream->info.rc_cfg.method==PJMEDIA_VID_STREAM_RC_SIMPLE_BLOCKING)
-//        {
-//            MY_DBG();
-//            pj_timestamp now, next_send_ts, total_send_ts;
-//
-//            total_send_ts.u64 = total_sent * stream->ts_freq.u64 * 8 /
-//                    stream->info.rc_cfg.bandwidth;
-//            next_send_ts = initial_time;
-//            pj_add_timestamp(&next_send_ts, &total_send_ts);
-//
-//            pj_get_timestamp(&now);
-//            if (pj_cmp_timestamp(&now, &next_send_ts) < 0) {
-//            unsigned ms_sleep;
-//            ms_sleep = pj_elapsed_msec(&now, &next_send_ts);
-//
-//            if (ms_sleep > 10)
-//                ms_sleep = 10;
-//
-//            pj_thread_sleep(ms_sleep);
-//            }
-//        }
-//    }
-//
-//#if TRACE_RC
-//    /* Trace log for rate control */
-//    {
-//        pj_timestamp end_time;
-//        unsigned total_sleep;
-//
-//        pj_get_timestamp(&end_time);
-//        total_sleep = pj_elapsed_msec(&initial_time, &end_time);
-//        PJ_LOG(5, (stream->name.ptr, "total pkt=%d size=%d sleep=%d\n", pkt_cnt, total_sent, total_sleep));
-//
-//        if (stream->tx_start.u64 == 0)
-//            stream->tx_start = initial_time;
-//        stream->tx_end = end_time;
-//        stream->rc_total_pkt += pkt_cnt;
-//        stream->rc_total_sleep += total_sleep;
-//        stream->rc_total_img++;
-//    }
-//#endif
-//
-//    /* Check if now is the time to transmit RTCP SR/RR report.
-//     * We only do this when stream direction is not "decoding only", because
-//     * when it is, check_tx_rtcp() will be handled by get_frame().
-//     */
-//    if (stream->dir != PJMEDIA_DIR_DECODING) {
-//       check_tx_rtcp(stream, pj_ntohl(channel->rtp.out_hdr.ts));
-//    }
-//
-//    /* Do nothing if we have nothing to transmit */
-//    if (total_sent == 0) {
-//       return PJ_SUCCESS;
-//    }
-//
-//    /* Update stat */
-//    if (pkt_cnt) {
-//        stream->rtcp.stat.rtp_tx_last_ts = pj_ntohl(stream->enc->rtp.out_hdr.ts);
-//        stream->rtcp.stat.rtp_tx_last_seq = pj_ntohs(stream->enc->rtp.out_hdr.seq);
-//    }
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-//    /* Update timestamp of last sending packet. */
-//    stream->last_frm_ts_sent = frame->timestamp;
-//#endif
-//
-//    return PJ_SUCCESS;
-//}
-//
-///* Decode one image from jitter buffer */
-//static pj_status_t decode_frame(pjmedia_vid_stream *stream,
-//                                pjmedia_frame *frame)
-//{
-//    pjmedia_vid_channel *channel = stream->dec;
-//    pj_uint32_t last_ts = 0;
-//    int frm_first_seq = 0, frm_last_seq = 0;
-//    pj_bool_t got_frame = PJ_FALSE;
-//    unsigned cnt;
-//    pj_status_t status;
-//
-//    /* Repeat get payload from the jitter buffer until all payloads with same
-//     * timestamp are collected.
-//     */
-//
-//    /* Check if we got a decodable frame */
-//    for (cnt=0; ; ++cnt) {
-//	char ptype;
-//	pj_uint32_t ts;
-//	int seq;
-//
-//	/* Peek frame from jitter buffer. */
-//	pjmedia_jbuf_peek_frame(stream->jb, cnt, NULL, NULL,
-//				&ptype, NULL, &ts, &seq);
-//	if (ptype == PJMEDIA_JB_NORMAL_FRAME) {
-//	    if (last_ts == 0) {
-//		last_ts = ts;
-//		frm_first_seq = seq;
-//	    }
-//	    if (ts != last_ts) {
-//		got_frame = PJ_TRUE;
-//		break;
-//	    }
-//	    frm_last_seq = seq;
-//	} else if (ptype == PJMEDIA_JB_ZERO_EMPTY_FRAME) {
-//	    /* No more packet in the jitter buffer */
-//	    break;
-//	}
-//    }
-//
-//    if (got_frame) {
-//	unsigned i;
-//
-//	/* Generate frame bitstream from the payload */
-//	if (cnt > stream->rx_frame_cnt) {
-//	    PJ_LOG(1,(channel->port.info.name.ptr,
-//		      "Discarding %u frames because array is full!",
-//		      cnt - stream->rx_frame_cnt));
-//	    pjmedia_jbuf_remove_frame(stream->jb, cnt - stream->rx_frame_cnt);
-//	    cnt = stream->rx_frame_cnt;
-//	}
-//
-//	for (i = 0; i < cnt; ++i) {
-//	    char ptype;
-//
-//	    stream->rx_frames[i].type = PJMEDIA_FRAME_TYPE_VIDEO;
-//	    stream->rx_frames[i].timestamp.u64 = last_ts;
-//	    stream->rx_frames[i].bit_info = 0;
-//
-//	    /* We use jbuf_peek_frame() as it will returns the pointer of
-//	     * the payload (no buffer and memcpy needed), just as we need.
-//	     */
-//	    pjmedia_jbuf_peek_frame(stream->jb, i,
-//				    (const void**)&stream->rx_frames[i].buf,
-//				    &stream->rx_frames[i].size, &ptype,
-//				    NULL, NULL, NULL);
-//
-//	    if (ptype != PJMEDIA_JB_NORMAL_FRAME) {
-//		/* Packet lost, must set payload to NULL and keep going */
-//		stream->rx_frames[i].buf = NULL;
-//		stream->rx_frames[i].size = 0;
-//		stream->rx_frames[i].type = PJMEDIA_FRAME_TYPE_NONE;
-//		continue;
-//	    }
-//	}
-//
-//	/* Decode */
-//	status = pjmedia_vid_codec_decode(stream->codec, cnt,
-//	                                  stream->rx_frames,
-//	                                  (unsigned)frame->size, frame);
-//	if (status != PJ_SUCCESS) {
-//	    LOGERR_((channel->port.info.name.ptr, "codec decode() error",
-//		     status));
-//	    frame->type = PJMEDIA_FRAME_TYPE_NONE;
-//	    frame->size = 0;
-//	}
-//
-//	pjmedia_jbuf_remove_frame(stream->jb, cnt);
-//    }
-//
-//    /* Learn remote frame rate after successful decoding */
-//    if (frame->type == PJMEDIA_FRAME_TYPE_VIDEO && frame->size)
-//    {
-//	/* Only check remote frame rate when timestamp is not wrapping and
-//	 * sequence is increased by 1.
-//	 */
-//	if (last_ts > stream->last_dec_ts &&
-//	    frm_first_seq - stream->last_dec_seq == 1)
-//	{
-//	    pj_uint32_t ts_diff;
-//	    pjmedia_video_format_detail *vfd;
-//
-//	    ts_diff = last_ts - stream->last_dec_ts;
-//	    vfd = pjmedia_format_get_video_format_detail(
-//				    &channel->port.info.fmt, PJ_TRUE);
-//	    if (stream->info.codec_info.clock_rate * vfd->fps.denum !=
-//		vfd->fps.num * ts_diff)
-//	    {
-//		/* Frame rate changed, update decoding port info */
-//		if (stream->info.codec_info.clock_rate % ts_diff == 0) {
-//		    vfd->fps.num = stream->info.codec_info.clock_rate/ts_diff;
-//		    vfd->fps.denum = 1;
-//		} else {
-//		    vfd->fps.num = stream->info.codec_info.clock_rate;
-//		    vfd->fps.denum = ts_diff;
-//		}
-//
-//		/* Update stream info */
-//		stream->info.codec_param->dec_fmt.det.vid.fps = vfd->fps;
-//
-//		/* Publish PJMEDIA_EVENT_FMT_CHANGED event if frame rate
-//		 * increased and not exceeding 100fps.
-//		 */
-//		if (vfd->fps.num/vfd->fps.denum <= 100 &&
-//		    vfd->fps.num * stream->dec_max_fps.denum >
-//		    stream->dec_max_fps.num * vfd->fps.denum)
-//		{
-//		    pjmedia_event *event = &stream->fmt_event;
-//
-//		    /* Update max fps of decoding dir */
-//		    stream->dec_max_fps = vfd->fps;
-//
-//		    /* Use the buffered format changed event:
-//		     * - just update the framerate if there is pending event,
-//		     * - otherwise, init the whole event.
-//		     */
-//		    if (stream->fmt_event.type != PJMEDIA_EVENT_NONE) {
-//			event->data.fmt_changed.new_fmt.det.vid.fps = vfd->fps;
-//		    } else {
-//			pjmedia_event_init(event, PJMEDIA_EVENT_FMT_CHANGED,
-//					   &frame->timestamp, stream);
-//			event->data.fmt_changed.dir = PJMEDIA_DIR_DECODING;
-//			pj_memcpy(&event->data.fmt_changed.new_fmt,
-//				  &stream->info.codec_param->dec_fmt,
-//				  sizeof(pjmedia_format));
-//		    }
-//		}
-//	    }
-//	}
-//
-//	/* Update last frame seq and timestamp */
-//	stream->last_dec_seq = frm_last_seq;
-//	stream->last_dec_ts = last_ts;
-//    }
-//
-//    return got_frame ? PJ_SUCCESS : PJ_ENOTFOUND;
-//}
-//
-//
-//static pj_status_t get_frame(pjmedia_port *port,
-//                             pjmedia_frame *frame)
-//{
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*) port->port_data.pdata;
-//    pjmedia_vid_channel *channel = stream->dec;
-//
-//    /* Return no frame is channel is paused */
-//    if (channel->paused) {
-//	frame->type = PJMEDIA_FRAME_TYPE_NONE;
-//	frame->size = 0;
-//	return PJ_SUCCESS;
-//    }
-//
-//    /* Report pending events. Do not publish the event while holding the
-//     * jb_mutex as that would lead to deadlock. It should be safe to
-//     * operate on fmt_event without the mutex because format change normally
-//     * would only occur once during the start of the media.
-//     */
-//    if (stream->fmt_event.type != PJMEDIA_EVENT_NONE) {
-//	pjmedia_event_fmt_changed_data *fmt_chg_data;
-//
-//	fmt_chg_data = &stream->fmt_event.data.fmt_changed;
-//
-//	/* Update stream info and decoding channel port info */
-//	if (fmt_chg_data->dir == PJMEDIA_DIR_DECODING) {
-//	    pjmedia_format_copy(&stream->info.codec_param->dec_fmt,
-//				&fmt_chg_data->new_fmt);
-//	    pjmedia_format_copy(&stream->dec->port.info.fmt,
-//				&fmt_chg_data->new_fmt);
-//
-//	    /* Override the framerate to be 1.5x higher in the event
-//	     * for the renderer.
-//	     */
-//	    fmt_chg_data->new_fmt.det.vid.fps.num *= 3;
-//	    fmt_chg_data->new_fmt.det.vid.fps.num /= 2;
-//	} else {
-//	    pjmedia_format_copy(&stream->info.codec_param->enc_fmt,
-//				&fmt_chg_data->new_fmt);
-//	    pjmedia_format_copy(&stream->enc->port.info.fmt,
-//				&fmt_chg_data->new_fmt);
-//	}
-//
-//	dump_port_info(fmt_chg_data->dir==PJMEDIA_DIR_DECODING ?
-//			stream->dec : stream->enc,
-//		       "changed");
-//
-//	pjmedia_event_publish(NULL, port, &stream->fmt_event, 0);
-//
-//	stream->fmt_event.type = PJMEDIA_EVENT_NONE;
-//    }
-//
-//    if (stream->miss_keyframe_event.type != PJMEDIA_EVENT_NONE) {
-//	pjmedia_event_publish(NULL, port, &stream->miss_keyframe_event,
-//			      PJMEDIA_EVENT_PUBLISH_POST_EVENT);
-//	stream->miss_keyframe_event.type = PJMEDIA_EVENT_NONE;
-//    }
-//
-//    pj_mutex_lock( stream->jb_mutex );
-//
-//    if (stream->dec_frame.size == 0) {
-//	/* Don't have frame in buffer, try to decode one */
-//	if (decode_frame(stream, frame) != PJ_SUCCESS) {
-//	    frame->type = PJMEDIA_FRAME_TYPE_NONE;
-//	    frame->size = 0;
-//	}
-//    } else {
-//	if (frame->size < stream->dec_frame.size) {
-//	    PJ_LOG(4,(stream->dec->port.info.name.ptr,
-//		      "Error: not enough buffer for decoded frame "
-//		      "(supplied=%d, required=%d)",
-//		      (int)frame->size, (int)stream->dec_frame.size));
-//	    frame->type = PJMEDIA_FRAME_TYPE_NONE;
-//	    frame->size = 0;
-//	} else {
-//	    frame->type = stream->dec_frame.type;
-//	    frame->timestamp = stream->dec_frame.timestamp;
-//	    frame->size = stream->dec_frame.size;
-//	    pj_memcpy(frame->buf, stream->dec_frame.buf, frame->size);
-//	}
-//
-//	stream->dec_frame.size = 0;
-//    }
-//
-//    pj_mutex_unlock( stream->jb_mutex );
-//
-//    return PJ_SUCCESS;
-//}
-//
-//static int cv_thread_func3 (void *arg) {
-//    PJ_LOG(4, (THIS_FILE, "cv_thread_func: Started"));
-//    pjmedia_vid_stream* vp = (pjmedia_vid_stream *) arg;
-//    
-//    VENC_CHN_ATTR_S stVencChnAttr;
-//    HI_S32 maxfd = 0;
-//    struct timeval TimeoutVal;
-//    fd_set read_fds;
-//    HI_S32 VencFd[VENC_MAX_CHN_NUM];
-//    HI_S32 s32ChnTotal = 1;
-//    VENC_CHN VencChn;
-//    HI_S32 s32Ret;
-//    HI_S32 i;
-//    VENC_CHN_STAT_S stStat;
-//    VENC_STREAM_S stStream;
-//
-//
-////    vp->enc_frame_size =  0;
-////    vp->enc_processed = 0;
-////    // unsigned             enc_frame_size =  0;
-////    // unsigned             enc_processed = 0;
-////    // pj_uint8_t          *enc_frame_whole;
-////    const pj_uint8_t *payload;
-////    pj_size_t payload_len;
-////    int result;
-////    pj_status_t status;
-//    
-//    VencChn = 0;
-//    s32Ret = HI_MPI_VENC_GetChnAttr(VencChn, &stVencChnAttr);
-//    if (HI_SUCCESS != s32Ret) {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetChnAttr failed with %#x!", __FUNCTION__, s32Ret));
-//        return s32Ret;
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetChnAttr SUCCESS!", __FUNCTION__));
-//    }
-//
-//    /* Set Venc Fd. */
-//    VencFd[0] = HI_MPI_VENC_GetFd(0);
-//    if (VencFd[0] < 0) {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetFd failed with %#x!", __FUNCTION__, VencFd[0]));
-//        return s32Ret;
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetFd SUCCESS!", __FUNCTION__));
-//    }
-//    if (maxfd <= VencFd[0]) {
-//        maxfd = VencFd[0];
-//    }
-//    
-//    
-//    
-//    vp->thread_quit = PJ_TRUE;
-//    vp->thread_exited = PJ_TRUE;
-//    PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: exit cycle!", __FUNCTION__));
-//    return PJ_SUCCESS;
-//}
-//
-//static int cv_thread_func (void *arg) {
-//    PJ_LOG(4, (THIS_FILE, "cv_thread_func: Started"));
-//    pjmedia_vid_stream* vp = (pjmedia_vid_stream *) arg;
-//
-//    VENC_CHN_ATTR_S stVencChnAttr;
-//    HI_S32 maxfd = 0;
-//    struct timeval TimeoutVal;
-//    fd_set read_fds;
-//    HI_S32 VencFd[VENC_MAX_CHN_NUM];
-//    HI_S32 s32ChnTotal = 1;
-//    VENC_CHN VencChn;
-//    HI_S32 s32Ret;
-//    HI_S32 i;
-//    VENC_CHN_STAT_S stStat;
-//    VENC_STREAM_S stStream;
-//
-//
-//    vp->enc_frame_size =  0;
-//    vp->enc_processed = 0;
-//    // unsigned             enc_frame_size =  0;
-//    // unsigned             enc_processed = 0;
-//    // pj_uint8_t          *enc_frame_whole;
-//    const pj_uint8_t *payload;
-//    pj_size_t payload_len;
-//    int result;
-//    pj_status_t status;
-//
-//
-//
-//
-//    VencChn = 0;
-//    s32Ret = HI_MPI_VENC_GetChnAttr(VencChn, &stVencChnAttr);
-//    if (HI_SUCCESS != s32Ret) {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetChnAttr failed with %#x!", __FUNCTION__, s32Ret));
-//        return s32Ret;
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetChnAttr SUCCESS!", __FUNCTION__));
-//    }
-//
-//    /* Set Venc Fd. */
-//    VencFd[0] = HI_MPI_VENC_GetFd(0);
-//    if (VencFd[0] < 0) {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetFd failed with %#x!", __FUNCTION__, VencFd[0]));
-//        return s32Ret;
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetFd SUCCESS!", __FUNCTION__));
-//    }
-//    if (maxfd <= VencFd[0]) {
-//        maxfd = VencFd[0];
-//    }
-//
-//
-//
-//
-//
-//
-//
-//    while (!vp->thread_quit) {
-//        // PJ_LOG(4, (THIS_FILE, "cv_thread_func: Processed"));
-//        FD_ZERO(&read_fds);
-//        FD_SET(VencFd[0], &read_fds);
-//        TimeoutVal.tv_sec  = 2;
-//        TimeoutVal.tv_usec = 0;
-//        s32Ret = select(maxfd + 1, &read_fds, NULL, NULL, &TimeoutVal);
-//        // PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: select s32Ret=%d!", __FUNCTION__, s32Ret));
-//        if (s32Ret < 0) {
-//            PJ_LOG(4, (THIS_FILE, "%s: select failed!", __FUNCTION__));
-//            break;
-//        } else if (s32Ret == 0) {
-//            PJ_LOG(4, (THIS_FILE, "%s: get venc stream time out, exit thread", __FUNCTION__));
-//            continue;
-//        } else {
-//            for (i = 0; i < s32ChnTotal; i++) {
-//                if (FD_ISSET(VencFd[i], &read_fds)) {
-//                    /*******************************************************
-//                     step 2.1 : query how many packs in one-frame stream.
-//                    *******************************************************/
-//                    // memset(&stStream, 0, sizeof(stStream));
-//                    pj_bzero(&stStream, sizeof(stStream));
-//                    s32Ret = HI_MPI_VENC_Query(i, &stStat);
-//                    if (HI_SUCCESS != s32Ret) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_Query chn[%d] failed with %#x!", __FUNCTION__, i, s32Ret));
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    }
-//
-//                    /*******************************************************
-//                    step 2.2 :suggest to check both u32CurPacks and u32LeftStreamFrames at the same time,for example:
-//                     if(0 == stStat.u32CurPacks || 0 == stStat.u32LeftStreamFrames)
-//                     {
-//                        SAMPLE_PRT("NOTE: Current  frame is NULL!\n");
-//                        continue;
-//                     }
-//                    *******************************************************/
-//                    if (0 == stStat.u32CurPacks) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: NOTE: Current  frame is NULL!", __FUNCTION__));
-//                        continue;
-//                    }
-//                    /*******************************************************
-//                     step 2.3 : malloc corresponding number of pack nodes.
-//                    *******************************************************/
-//                    // stStream.pstPack = (VENC_PACK_S*)malloc(sizeof(VENC_PACK_S) * stStat.u32CurPacks);
-//                    stStream.pstPack = (VENC_PACK_S *)calloc(stStat.u32CurPacks, sizeof(VENC_PACK_S));
-//                    if (NULL == stStream.pstPack) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: malloc stream pack failed!", __FUNCTION__));
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    }
-//                    /*******************************************************
-//                     step 2.4 : call mpi to get one-frame stream
-//                    *******************************************************/
-//                    stStream.u32PackCount = stStat.u32CurPacks;
-//                    // clock_t tStart = clock();
-//                    // s32Ret = HI_MPI_VENC_GetStream(i, &stStream, 3600);
-//                    s32Ret = HI_MPI_VENC_GetStream(i, &stStream, HI_TRUE);
-//                    if (HI_SUCCESS != s32Ret) {
-//                        free(stStream.pstPack);
-//                        stStream.pstPack = NULL;
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetStream failed with %#x!", __FUNCTION__, s32Ret));
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    }
-//                    VENC_PACK_S*  pstData;
-//
-//                    if (stStream.u32PackCount > 1) {
-////                        PJ_LOG(4, (THIS_FILE, "%s: ======================KEYFRAME SENDED.", __FUNCTION__));
-//                    }
-//                    for (HI_S32 d = 0; d < stStream.u32PackCount; d++) {
-//
-//                        pstData = &stStream.pstPack[d];
-//                        if (pstData->DataType.enH264EType == H264E_NALU_PSLICE) {
-////                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_PSLICE", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_ISLICE) {
-////                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_ISLICE", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_SEI) {
-////                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_SEI", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_SPS) {
-////                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_SPS", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_PPS) {
-////                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_PPS", __FUNCTION__));
-//                        }
-////                        } else if (pstData->DataType.enH264EType == H264E_NALU_IPSLICE) {
-////                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_IPSLICE", __FUNCTION__));
-////                        }
-//                        MY_DBG();
-////                        PJ_LOG(4, (THIS_FILE, "%s: pstData->u32Len:     %#x", __FUNCTION__, pstData->u32Len[0]));
-////                        PJ_LOG(4, (THIS_FILE, "%s: *pstData->u32Len:    %u", __FUNCTION__, pstData->u32Len[0]));
-////                        PJ_LOG(4, (THIS_FILE, "%s: pstData->u32Offset:  %#x", __FUNCTION__, pstData->u32Offset));
-//                        HI_U32 nal_size = *pstData->u32Len-pstData->u32Offset;
-//                        MY_DBG();
-//                        void *nal_address = pstData->pu8Addr[0]+pstData->u32Offset;
-//                        MY_DBG();
-//                        // print_bytes(nal_address, nal_size);
-////                        if (0) {
-////                            
-////                        }
-//                        // const unsigned char * const nal = nal_address;
-//
-//                        // PJ_LOG(4, (THIS_FILE, "%s: nal_size = %u", __FUNCTION__, nal_size));
-//                        // PJ_LOG(4, (THIS_FILE, "%s: pstPack[d].u64PTS = %llu", __FUNCTION__, pstData->u64PTS));
-//                        // vp->frame_ts.u64 = pstData->u64PTS;
-//                        // memcpy(tmp+sz, nal_address, nal_size);
-//                        // print_bytes(tmp, nal_size);
-//                        // print_bytes(nal, nal_size);
-//                        // print_bytes(nal_address, nal_size);
-//                        // unsigned char nal_type = get_nal_type(nal, nal_size);
-//                        // unsigned char nal_type = get_nal_type(nal_address, nal_size);
-//                        // idr = PJ_FALSE;
-//                        // sz = sz + nal_size;
-//                        vp->enc_processed = 0;
-//                        int first = 0;
-//                        if (0) {
-//                            unsigned char *tbuf = (unsigned char *)pj_pool_calloc(vp->cv_pool, nal_size, sizeof(unsigned char));
-//                            MY_DBG();
-//                            if(!tbuf ) {
-//                                PJ_LOG(4, (THIS_FILE, "%s: Allocation tbuf failure.", __FUNCTION__));
-//                                exit (1);
-//                            }
-//                            MY_DBG();
-//                            pj_memcpy(tbuf,
-//                                nal_address,
-//                                nal_size);
-//                            MY_DBG();
-//                            while ((vp->enc_processed < nal_size) && (!vp->thread_quit)) {
-//
-//                                // PJ_LOG(4, (THIS_FILE, "%s: ===================================vp->thread_quit = %u",
-//                                    // __FUNCTION__, vp->thread_quit));
-//                                status = pjmedia_h264_packetize(vp->pktz,
-//                                    tbuf,
-//                                    nal_size,
-//                                    &vp->enc_processed,
-//                                    &payload, &payload_len
-//                                );
-//
-//                                if (vp->enc_processed < nal_size) {
-//                                    vp->has_more_data = PJ_TRUE;
-//                                } else {
-//                                    vp->has_more_data = PJ_FALSE;
-//                                }
-//
-//
-//                                // print_bytes(nal_address, nal_size);
-//                                // print_bytes(payload, payload_len);
-//
-//                                if (status != PJ_SUCCESS) {
-//                                    /* Reset */
-//                                    vp->enc_frame_size = vp->enc_processed = 0;
-//                                    // *has_more = (h264_passthrough_data->enc_processed <
-//                                    //         h264_passthrough_data->enc_frame_size) ||
-//                                    //     (h264_passthrough_data->ilayer < h264_passthrough_data->iLayerNum);
-//
-//                                    PJ_PERROR(3,(THIS_FILE, status, "pjmedia_h264_packetize() error"));
-//                                    return status;
-//                                }
-//                                PJ_LOG(4, (THIS_FILE, "%s: enc_processed = %u of %u, payload_len = %u",
-//                                    __FUNCTION__, vp->enc_processed, nal_size, payload_len));
-//
-//                                pjmedia_frame *frame = (pjmedia_frame *)pj_pool_calloc(vp->cv_pool, 1, sizeof(pjmedia_frame));
-//                                if(!frame) {
-//                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation frame failure.", __FUNCTION__));
-//                                    exit (1);
-//                                }
-//                                frame->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//
-//                                if (first == 1) {
-//                                    frame->size = (pj_size_t)payload_len+4;
-//                                } else {
-//                                    frame->size = (pj_size_t)payload_len;
-//                                }
-//                                frame->timestamp.u64 = pstData->u64PTS;
-//
-//                                frame->buf = (unsigned char *)pj_pool_calloc(vp->cv_pool, frame->size, sizeof(unsigned char));
-//                                if(!frame->buf ) {
-//                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
-//                                    exit (1);
-//                                }
-//                                if (first == 1) {
-//                                    unsigned char a[4] = {0x00, 0x00, 0x00, 0x01};
-//                                    pj_memcpy(frame->buf,
-//                                        a,
-//                                        4);
-//                                    pj_memcpy(frame->buf+4,
-//                                        payload,
-//                                        frame->size);
-//                                    first = 0;
-//                                } else {
-//                                    pj_memcpy(frame->buf,
-//                                        payload,
-//                                        frame->size);
-//                                }
-//
-//
-//                                if (stStream.u32PackCount > 1) {
-//                                    frame->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-//                                } else {
-//                                    frame->bit_info = 0;
-//                                }
-//                                // print_bytes(nal_address, nal_size);
-//                                // print_bytes(payload, payload_len);
-//                                // print_bytes(frame->buf, frame->size);
-//                                PJ_LOG(4, (THIS_FILE, "%s: frame->size = %u, payload_len = %u", __FUNCTION__, frame->size, payload_len));
-//                                // status = pjmedia_port_put_frame(vp->client_port, frame);
-//                                status = put_frame(&vp->enc->port, frame);
-//                                if (status != PJ_SUCCESS)
-//                                    return status;
-//                                // PJ_LOG(4, (THIS_FILE, "%s: image_size=%u, frame_ts=%llu", __FUNCTION__, frame->size, vp->frame_ts.u64));
-//                                // result = (*vp->vid_cb.capture_cb)(&vp->base, vp->user_data, frame);
-//                                // pj_bzero(frame, sizeof(pjmedia_frame));
-//
-//                            }
-//                        } else {
-//                            MY_DBG();
-//                            pjmedia_frame *frame = (pjmedia_frame *)pj_pool_calloc(vp->cv_pool, 1, sizeof(pjmedia_frame));
-//                            if(!frame) {
-//                                PJ_LOG(4, (THIS_FILE, "%s: Allocation frame failure.", __FUNCTION__));
-//                                exit (1);
-//                            }
-//                            MY_DBG();
-//                            frame->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//
-//                            frame->size = (pj_size_t)nal_size;
-//                            frame->timestamp.u64 = pstData->u64PTS;
-//                            MY_DBG();
-//
-////                            PJ_LOG(4, (THIS_FILE, "%s: frame->size: %d", __FUNCTION__, frame->size));
-//                            frame->buf = pj_pool_calloc(vp->cv_pool, frame->size, sizeof(unsigned char));
-////                            frame->buf = (unsigned char *)pj_pool_calloc(vp->cv_pool, frame->size, sizeof(unsigned char));
-//                            MY_DBG();
-//                            if(!frame->buf ) {
-//                                PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
-//                                exit (1);
-//                            }
-//                            MY_DBG();
-//                            pj_memcpy(frame->buf,
-//                                nal_address,
-//                                frame->size);
-//                            MY_DBG();
-//                            // PJ_LOG(4, (THIS_FILE, "%s: nal_size = %u, nal_address =%p", __FUNCTION__, frame->size, frame->buf));
-//                            // status = pjmedia_port_put_frame(vp->client_port, frame);
-//                            status = put_frame(&vp->enc->port, frame);
-//                            pj_bzero(frame->buf, frame->size * sizeof(unsigned char));
-//                            frame->buf = ((void*)0);
-//                            pj_bzero(frame, sizeof(pjmedia_frame));
-//                            frame = ((void*)0);
-//                            if (status != PJ_SUCCESS)
-//                                return status;
-//                            // PJ_LOG(4, (THIS_FILE, "%s: image_size=%u, frame_ts=%llu", __FUNCTION__, frame->size, vp->frame_ts.u64));
-//                            // result = (*vp->vid_cb.capture_cb)(&vp->base, vp->user_data, frame);
-//                            // pj_bzero(frame, sizeof(pjmedia_frame));
-//                        }
-//
-//                    }
-//
-//                    /*******************************************************
-//                     step 2.6 : release stream
-//                    *******************************************************/
-//                    s32Ret = HI_MPI_VENC_ReleaseStream(i, &stStream);
-//                    if (HI_SUCCESS != s32Ret) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_ReleaseStream(%d), failed with %#x!", __FUNCTION__, i, s32Ret));
-//                        free(stStream.pstPack);
-//                        stStream.pstPack = NULL;
-//                        // free(pstData);
-//                        // pstData = NULL;
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    } else {
-//                        // PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_ReleaseStream[%d] SUCCESS", __FUNCTION__, i));
-//                    }
-//
-//                    free(stStream.pstPack);
-//                    stStream.pstPack = NULL;
-//                } else {
-//                    PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: FD_ISSET(VencFd[%u], &read_fds failed!", __FUNCTION__, i));
-//                }
-//            }
-//        }
-//
-//
-//    }
-//    vp->thread_quit = PJ_TRUE;
-//    vp->thread_exited = PJ_TRUE;
-//    PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: exit cycle!", __FUNCTION__));
-//    return PJ_SUCCESS;
-//}
-//
-//static int cv_thread_func2 (void *arg) {
-//    PJ_LOG(4, (THIS_FILE, "cv_thread_func: Started"));
-//    pjmedia_vid_stream* vp = (pjmedia_vid_stream *) arg;
-//
-//    VENC_CHN_ATTR_S stVencChnAttr;
-//    HI_S32 maxfd = 0;
-//    struct timeval TimeoutVal;
-//    fd_set read_fds;
-//    HI_S32 VencFd[VENC_MAX_CHN_NUM];
-//    HI_S32 s32ChnTotal = 1;
-//    VENC_CHN VencChn;
-//    HI_S32 s32Ret;
-//    HI_S32 i;
-//    VENC_CHN_STAT_S stStat;
-//    VENC_STREAM_S stStream;
-//
-//
-//    vp->enc_frame_size =  0;
-//    vp->enc_processed = 0;
-//    // unsigned             enc_frame_size =  0;
-//    // unsigned             enc_processed = 0;
-//    // pj_uint8_t          *enc_frame_whole;
-//    const pj_uint8_t *payload;
-//    pj_size_t payload_len;
-//    int result;
-//    pj_status_t status;
-//
-//
-//
-//
-//    VencChn = 0;
-//    s32Ret = HI_MPI_VENC_GetChnAttr(VencChn, &stVencChnAttr);
-//    if (HI_SUCCESS != s32Ret) {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetChnAttr failed with %#x!", __FUNCTION__, s32Ret));
-//        return s32Ret;
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetChnAttr SUCCESS!", __FUNCTION__));
-//    }
-//
-//    /* Set Venc Fd. */
-//    VencFd[0] = HI_MPI_VENC_GetFd(0);
-//    if (VencFd[0] < 0) {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetFd failed with %#x!", __FUNCTION__, VencFd[0]));
-//        return s32Ret;
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetFd SUCCESS!", __FUNCTION__));
-//    }
-//    if (maxfd <= VencFd[0]) {
-//        maxfd = VencFd[0];
-//    }
-//#define MAX_BUF_SIZE 10000
-////#define MAX_BUF_SIZE 6220800
-//    MY_DBG();
-//    unsigned char * tmpbuf = (unsigned char *)pj_pool_calloc(vp->own_pool, MAX_BUF_SIZE, sizeof(unsigned char)); 
-////                                frame->buf = (unsigned char *)pj_pool_calloc(vp->cv_pool, frame->size, sizeof(unsigned char));
-////                                frame.buf = (unsigned char *)calloc(frame.size, sizeof(unsigned char));
-//    MY_DBG();
-//    if(!tmpbuf ) {
-//        PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
-//        exit (1);
-//    }
-//    MY_DBG();
-//
-//    VENC_PACK_S *tmKEYpstPack = (VENC_PACK_S *)pj_pool_calloc(vp->own_pool, 4, sizeof(VENC_PACK_S));
-//    if (NULL == tmKEYpstPack) {
-//        PJ_LOG(4, (THIS_FILE, "%s: malloc tmKEYpstPack pack failed!", __FUNCTION__));
-//        vp->thread_quit = PJ_TRUE;
-////        break;
-//    }
-//    MY_DBG();
-//
-//    VENC_PACK_S *tmONEpstPack = (VENC_PACK_S *)pj_pool_calloc(vp->own_pool, 1, sizeof(VENC_PACK_S));
-//    if (NULL == tmONEpstPack) {
-//        PJ_LOG(4, (THIS_FILE, "%s: malloc tmONEpstPack pack failed!", __FUNCTION__));
-//        vp->thread_quit = PJ_TRUE;
-////        break;
-//    }
-//    MY_DBG();
-//
-//
-//    while (!vp->thread_quit) {
-//        // PJ_LOG(4, (THIS_FILE, "cv_thread_func: Processed"));
-//        FD_ZERO(&read_fds);
-//        FD_SET(VencFd[0], &read_fds);
-//        TimeoutVal.tv_sec  = 2;
-//        TimeoutVal.tv_usec = 0;
-//        s32Ret = select(maxfd + 1, &read_fds, NULL, NULL, &TimeoutVal);
-//        // PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: select s32Ret=%d!", __FUNCTION__, s32Ret));
-//        if (s32Ret < 0) {
-//            PJ_LOG(4, (THIS_FILE, "%s: select failed!", __FUNCTION__));
-//            break;
-//        } else if (s32Ret == 0) {
-//            PJ_LOG(4, (THIS_FILE, "%s: get venc stream time out, exit thread", __FUNCTION__));
-//            continue;
-//        } else {
-//            for (i = 0; i < s32ChnTotal; i++) {
-//                PJ_LOG(4, (THIS_FILE, "%s: =================================================================================\n", __FUNCTION__, i, s32Ret));
-//                if (FD_ISSET(VencFd[i], &read_fds)) {
-//                    /*******************************************************
-//                     step 2.1 : query how many packs in one-frame stream.
-//                    *******************************************************/
-//                    // memset(&stStream, 0, sizeof(stStream));
-//                    pj_bzero(&stStream, sizeof(stStream));
-//                    s32Ret = HI_MPI_VENC_Query(i, &stStat);
-//                    if (HI_SUCCESS != s32Ret) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_Query chn[%d] failed with %#x!", __FUNCTION__, i, s32Ret));
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    }
-//
-//                    /*******************************************************
-//                    step 2.2 :suggest to check both u32CurPacks and u32LeftStreamFrames at the same time,for example:
-//                     if(0 == stStat.u32CurPacks || 0 == stStat.u32LeftStreamFrames)
-//                     {
-//                        SAMPLE_PRT("NOTE: Current  frame is NULL!\n");
-//                        continue;
-//                     }
-//                    *******************************************************/
-//                    if (0 == stStat.u32CurPacks) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: NOTE: Current  frame is NULL!", __FUNCTION__));
-//                        continue;
-//                    }
-//                    /*******************************************************
-//                     step 2.3 : malloc corresponding number of pack nodes.
-//                    *******************************************************/
-//                    // stStream.pstPack = (VENC_PACK_S*)malloc(sizeof(VENC_PACK_S) * stStat.u32CurPacks);
-//                    pj_bzero(tmKEYpstPack, sizeof(tmKEYpstPack));
-//                    pj_bzero(tmONEpstPack, sizeof(tmONEpstPack));
-//                    if (stStat.u32CurPacks > 1) {
-//                        stStream.pstPack = tmKEYpstPack;
-//                    } else {
-//                        stStream.pstPack = tmONEpstPack;
-//                    }
-//                    
-////                    pj_bzero(tmpstPack, sizeof(tmpstPack));
-////                    PJ_LOG(4, (THIS_FILE, "%s: tmpstPack[0].u32Len        =%u", __FUNCTION__, tmpstPack[0].u32Len[0]));
-////                    tmpstPack[0].u32Len[0] = 25;
-////                    PJ_LOG(4, (THIS_FILE, "%s: tmpstPack[0].u32Len        =%u", __FUNCTION__, tmpstPack[0].u32Len[0]));
-////                    stStream.pstPack = tmpstPack;
-////                    PJ_LOG(4, (THIS_FILE, "%s: stStream.pstPack[0].u32Len =%u", __FUNCTION__, stStream.pstPack[0].u32Len[0]));
-////                    stStream.pstPack = (VENC_PACK_S *)calloc(stStat.u32CurPacks, sizeof(VENC_PACK_S));
-////                    if (NULL == stStream.pstPack) {
-////                        PJ_LOG(4, (THIS_FILE, "%s: malloc stream pack failed!", __FUNCTION__));
-////                        vp->thread_quit = PJ_TRUE;
-////                        break;
-////                    }
-//                    /*******************************************************
-//                     step 2.4 : call mpi to get one-frame stream
-//                    *******************************************************/
-//                    stStream.u32PackCount = stStat.u32CurPacks;
-//                    // clock_t tStart = clock();
-//                    // s32Ret = HI_MPI_VENC_GetStream(i, &stStream, 3600);
-////                    s32Ret = HI_MPI_VENC_GetStream(i, &stStream, HI_TRUE);
-//                    s32Ret = HI_MPI_VENC_GetStream(i, &stStream, HI_FALSE);
-//                    if (HI_SUCCESS != s32Ret) {
-//                        free(stStream.pstPack);
-//                        stStream.pstPack = NULL;
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetStream failed with %#x!", __FUNCTION__, s32Ret));
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    }
-//                    VENC_PACK_S*  pstData;
-//
-//                    if (stStream.u32PackCount > 1) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: ======================KEYFRAME SENDED.==================================", __FUNCTION__));
-//                    }
-//                    for (HI_S32 d = 0; d < stStream.u32PackCount; d++) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: ================================= d=%d ======================================", __FUNCTION__, d));
-//                        pstData = &stStream.pstPack[d];
-//                        if (pstData == NULL) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: pstData is NULL ======================================", __FUNCTION__, d));
-//                        } else {
-//                            PJ_LOG(4, (THIS_FILE, "%s: pstData is NOT NULL ======================================", __FUNCTION__, d));
-//                            PJ_LOG(4, (THIS_FILE, "%s: pstData is NOT NULL %u ======================================", __FUNCTION__, *pstData->u32Len));
-//                        }
-////                        pstData = &stStream.pstPack[d];
-//                        PJ_LOG(4, (THIS_FILE, "%s: ================================= t=%d ======================================", __FUNCTION__, 
-//                                pstData->DataType.enH264EType));
-//                        if (pstData->DataType.enH264EType == H264E_NALU_PSLICE) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_PSLICE", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_ISLICE) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_ISLICE", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_SEI) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_SEI", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_SPS) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_SPS", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_PPS) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_PPS", __FUNCTION__));
-//                        }
-////                        } else if (pstData->DataType.enH264EType == H264E_NALU_IPSLICE) {
-////                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_IPSLICE", __FUNCTION__));
-////                        }
-//                        MY_DBG();
-//                        vp->enc_processed = 0;
-//                        int first = 0;
-//                        
-//                        
-//                        int own_pack = 0;
-//                        
-////                        HI_U32 nal_size = pstData->u32Len-pstData->u32Offset;
-////                        HI_U32 nal_size = *pstData->u32Len-pstData->u32Offset;
-//                        pj_size_t nal_size = *pstData->u32Len-pstData->u32Offset;
-//                        
-////                        log_bytes1(pstData->pu8Addr, *pstData->u32Len);
-//                        MY_DBG();
-////                        void *nal_address = pstData->pu8Addr+pstData->u32Offset;
-//                        const void *nal_address = pstData->pu8Addr+pstData->u32Offset;
-//                        MY_DBG();
-////                        log_bytes1(nal_address, nal_size);
-//                        
-//                        // const unsigned char * const nal = nal_address;
-//
-//                        // PJ_LOG(4, (THIS_FILE, "%s: nal_size = %u", __FUNCTION__, nal_size));
-//                        // PJ_LOG(4, (THIS_FILE, "%s: pstPack[d].u64PTS = %llu", __FUNCTION__, pstData->u64PTS));
-//                        // vp->frame_ts.u64 = pstData->u64PTS;
-//                        // memcpy(tmp+sz, nal_address, nal_size);
-//                        // print_bytes(tmp, nal_size);
-//                        // print_bytes(nal, nal_size);
-//                        // print_bytes(nal_address, nal_size);
-//                        // unsigned char nal_type = get_nal_type(nal, nal_size);
-//                        // unsigned char nal_type = get_nal_type(nal_address, nal_size);
-//                        // idr = PJ_FALSE;
-//                        // sz = sz + nal_size;
-//                        if (own_pack) {
-//                            unsigned char *tbuf = (unsigned char *)pj_pool_calloc(vp->own_pool, nal_size, sizeof(unsigned char));
-//                            if(!tbuf ) {
-//                                PJ_LOG(4, (THIS_FILE, "%s: Allocation tbuf failure.", __FUNCTION__));
-//                                exit (1);
-//                            }
-//                            MY_DBG();
-//                            pj_memcpy(tbuf,
-//                                nal_address,
-//                                nal_size);
-//                            MY_DBG();
-//                            while ((vp->enc_processed < nal_size) && (!vp->thread_quit)) {
-//
-//                                // PJ_LOG(4, (THIS_FILE, "%s: ===================================vp->thread_quit = %u",
-//                                    // __FUNCTION__, vp->thread_quit));
-//                                status = pjmedia_h264_packetize(vp->pktz,
-//                                    tbuf,
-//                                    nal_size,
-//                                    &vp->enc_processed,
-//                                    &payload, &payload_len
-//                                );
-//
-//                                if (vp->enc_processed < nal_size) {
-//                                    vp->has_more_data = PJ_TRUE;
-//                                } else {
-//                                    vp->has_more_data = PJ_FALSE;
-//                                }
-//
-//
-//                                // print_bytes(nal_address, nal_size);
-//                                // print_bytes(payload, payload_len);
-//
-//                                if (status != PJ_SUCCESS) {
-//                                    /* Reset */
-//                                    vp->enc_frame_size = vp->enc_processed = 0;
-//                                    // *has_more = (h264_passthrough_data->enc_processed <
-//                                    //         h264_passthrough_data->enc_frame_size) ||
-//                                    //     (h264_passthrough_data->ilayer < h264_passthrough_data->iLayerNum);
-//
-//                                    PJ_PERROR(3,(THIS_FILE, status, "pjmedia_h264_packetize() error"));
-//                                    return status;
-//                                }
-//                                PJ_LOG(4, (THIS_FILE, "%s: enc_processed = %u of %u, payload_len = %u",
-//                                    __FUNCTION__, vp->enc_processed, nal_size, payload_len));
-//
-//                                pjmedia_frame *frame = (pjmedia_frame *)pj_pool_calloc(vp->own_pool, 1, sizeof(pjmedia_frame));
-//                                if(!frame) {
-//                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation frame failure.", __FUNCTION__));
-//                                    exit (1);
-//                                }
-//                                frame->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//
-//                                if (first == 1) {
-//                                    frame->size = (pj_size_t)payload_len+4;
-//                                } else {
-//                                    frame->size = (pj_size_t)payload_len;
-//                                }
-//                                frame->timestamp.u64 = pstData->u64PTS;
-//
-//                                frame->buf = (unsigned char *)pj_pool_calloc(vp->own_pool, frame->size, sizeof(unsigned char));
-//                                if(!frame->buf ) {
-//                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
-//                                    exit (1);
-//                                }
-//                                if (first == 1) {
-//                                    unsigned char a[4] = {0x00, 0x00, 0x00, 0x01};
-//                                    pj_memcpy(frame->buf,
-//                                        a,
-//                                        4);
-//                                    pj_memcpy(frame->buf+4,
-//                                        payload,
-//                                        frame->size);
-//                                    first = 0;
-//                                } else {
-//                                    pj_memcpy(frame->buf,
-//                                        payload,
-//                                        frame->size);
-//                                }
-//
-//
-//                                if (stStream.u32PackCount > 1) {
-//                                    frame->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-//                                } else {
-//                                    frame->bit_info = 0;
-//                                }
-//                                // print_bytes(nal_address, nal_size);
-//                                // print_bytes(payload, payload_len);
-//                                // print_bytes(frame->buf, frame->size);
-//                                PJ_LOG(4, (THIS_FILE, "%s: frame->size = %u, payload_len = %u", __FUNCTION__, frame->size, payload_len));
-//                                // status = pjmedia_port_put_frame(vp->client_port, frame);
-//                                status = put_frame(&vp->enc->port, frame);
-//                                if (status != PJ_SUCCESS)
-//                                    return status;
-//                                // PJ_LOG(4, (THIS_FILE, "%s: image_size=%u, frame_ts=%llu", __FUNCTION__, frame->size, vp->frame_ts.u64));
-//                                // result = (*vp->vid_cb.capture_cb)(&vp->base, vp->user_data, frame);
-//                                // pj_bzero(frame, sizeof(pjmedia_frame));
-//
-//                            }
-//                        } else {
-//                            if (1) {
-//                                MY_DBG();
-//                                pjmedia_frame *frame = (pjmedia_frame *)pj_pool_calloc(vp->own_pool, 1, sizeof(pjmedia_frame));
-//                                MY_DBG();
-//                                if(!frame) {
-//                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation frame failure.", __FUNCTION__));
-//                                    exit (1);
-//                                }
-//                                MY_DBG();
-//                                frame->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//
-//                                MY_DBG();
-//                                frame->size = (pj_size_t)nal_size;
-//                                PJ_LOG(4, (THIS_FILE, "%s: frame->size: %d", __FUNCTION__, frame->size));
-//                                MY_DBG();
-//                                frame->timestamp.u64 = pstData->u64PTS;
-//                                MY_DBG();
-//
-//                                frame->buf = (unsigned char *)pj_pool_calloc(vp->own_pool, frame->size, sizeof(unsigned char));
-////                                frame->buf = (unsigned char *)calloc(frame->size, sizeof(unsigned char));
-//                                MY_DBG();
-//                                if(!frame->buf ) {
-//                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
-//                                    exit (1);
-//                                }
-//                                MY_DBG();
-//                                pj_memcpy(frame->buf,
-//                                    nal_address,
-//                                    frame->size);
-//                                MY_DBG();
-//                                // PJ_LOG(4, (THIS_FILE, "%s: nal_size = %u, nal_address =%p", __FUNCTION__, frame->size, frame->buf));
-//                                // status = pjmedia_port_put_frame(vp->client_port, frame);
-//                                status = put_frame(&vp->enc->port, frame);
-//                                MY_DBG();
-////                                free(&frame->buf);
-//                                MY_DBG();
-//                                frame->buf = NULL;
-//                                frame = NULL;
-//                                MY_DBG();
-//                            } else {
-//                                MY_DBG();
-//                                pjmedia_frame frame;
-////                                pjmedia_frame *frame = (pjmedia_frame *)pj_pool_calloc(vp->cv_pool, 1, sizeof(pjmedia_frame));
-////                                MY_DBG();
-////                                if(!frame) {
-////                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation frame failure.", __FUNCTION__));
-////                                    exit (1);
-////                                }
-//                                MY_DBG();
-//                                frame.type = PJMEDIA_FRAME_TYPE_VIDEO;
-//
-//                                MY_DBG();
-//                                frame.size = (pj_size_t)nal_size;
-//                                PJ_LOG(4, (THIS_FILE, "%s: frame->size: %d", __FUNCTION__, frame.size));
-//                                MY_DBG();
-//                                frame.timestamp.u64 = pstData->u64PTS;
-//                                MY_DBG();
-//
-////                                frame.buf = (unsigned char *)pj_pool_calloc(vp->cv_pool, frame.size, sizeof(unsigned char)); 6220800
-//////                                frame->buf = (unsigned char *)pj_pool_calloc(vp->cv_pool, frame->size, sizeof(unsigned char));
-//////                                frame.buf = (unsigned char *)calloc(frame.size, sizeof(unsigned char));
-////                                MY_DBG();
-////                                if(!frame.buf ) {
-////                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
-////                                    exit (1);
-////                                }
-//                                pj_bzero(tmpbuf, MAX_BUF_SIZE * sizeof(unsigned char));
-////                                pj_bzero(tmpbuf, sizeof(tmpbuf));
-//                                MY_DBG();
-//                                pj_memcpy(tmpbuf,
-//                                    nal_address,
-//                                    frame.size);
-//                                MY_DBG();
-//                                frame.buf = tmpbuf;
-//                                
-//                                
-//                                MY_DBG();
-////                                pj_memcpy(frame.buf,
-////                                    nal_address,
-////                                    frame.size);
-////                                log_bytes1(frame.buf, frame.size);
-////                                MY_DBG();
-//                                // PJ_LOG(4, (THIS_FILE, "%s: nal_size = %u, nal_address =%p", __FUNCTION__, frame->size, frame->buf));
-//                                // status = pjmedia_port_put_frame(vp->client_port, frame);
-//                                status = PJ_SUCCESS;
-//                                status = put_frame(&vp->enc->port, &frame);
-//                                MY_DBG();
-////                                sleep(1);
-////                                usleep(2000);
-////                                free(frame.buf);
-//                                PJ_LOG(4, (THIS_FILE, "%s: frame.size * sizeof(unsigned char) = %d", __FUNCTION__, frame.size * sizeof(unsigned char)));
-//                                PJ_LOG(4, (THIS_FILE, "%s: sizeof(frame.buf)                  = %d", __FUNCTION__, sizeof(frame.buf)));
-////                                pj_bzero(frame.buf, frame.size * sizeof(unsigned char));
-//                                MY_DBG();
-////                                frame.buf = NULL;
-//                                MY_DBG();
-//                            }
-//                            if (status != PJ_SUCCESS) {
-//                                PJ_LOG(4, (THIS_FILE, "%s: Some error", __FUNCTION__));
-//                                return status;
-//                            }
-//                            // PJ_LOG(4, (THIS_FILE, "%s: image_size=%u, frame_ts=%llu", __FUNCTION__, frame->size, vp->frame_ts.u64));
-//                            // result = (*vp->vid_cb.capture_cb)(&vp->base, vp->user_data, frame);
-//                            // pj_bzero(frame, sizeof(pjmedia_frame));
-//                        }
-//                        PJ_LOG(4, (THIS_FILE, "%s: ================================= d=%d ======================================", __FUNCTION__, d));
-//                    }
-//
-//                    /*******************************************************
-//                     step 2.6 : release stream
-//                    *******************************************************/
-//                    s32Ret = HI_MPI_VENC_ReleaseStream(i, &stStream);
-//                    if (HI_SUCCESS != s32Ret) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_ReleaseStream(%d), failed with %#x!", __FUNCTION__, i, s32Ret));
-//                        free(stStream.pstPack);
-//                        stStream.pstPack = NULL;
-//                        // free(pstData);
-//                        // pstData = NULL;
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    } else {
-//                        // PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_ReleaseStream[%d] SUCCESS", __FUNCTION__, i));
-//                    }
-//
-//                    free(stStream.pstPack);
-//                    stStream.pstPack = NULL;
-//                } else {
-//                    PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: FD_ISSET(VencFd[%u], &read_fds failed!", __FUNCTION__, i));
-//                }
-//            }
-//        }
-//
-//
-//    }
-//    vp->thread_quit = PJ_TRUE;
-//    vp->thread_exited = PJ_TRUE;
-//    PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: exit cycle!", __FUNCTION__));
-//    return PJ_SUCCESS;
-//}
-//
-///*
-// * Create media channel.
-// */
-//static pj_status_t create_channel( pj_pool_t *pool,
-//				   pjmedia_vid_stream *stream,
-//				   pjmedia_dir dir,
-//				   unsigned pt,
-//				   const pjmedia_vid_stream_info *info,
-//				   pjmedia_vid_channel **p_channel)
-//{
-//    enum { M = 32 };
-//    pjmedia_vid_channel *channel;
-//    pj_status_t status;
-//    unsigned min_out_pkt_size;
-//    pj_str_t name;
-//    const char *type_name;
-//    pjmedia_format *fmt;
-//    char fourcc_name[5];
-//    pjmedia_port_info *pi;
-//
-//    pj_assert(info->type == PJMEDIA_TYPE_VIDEO);
-//    pj_assert(dir == PJMEDIA_DIR_DECODING || dir == PJMEDIA_DIR_ENCODING);
-//
-//    /* Allocate memory for channel descriptor */
-//    channel = PJ_POOL_ZALLOC_T(pool, pjmedia_vid_channel);
-//    PJ_ASSERT_RETURN(channel != NULL, PJ_ENOMEM);
-//
-//    /* Init vars */
-//    if (dir==PJMEDIA_DIR_DECODING) {
-//	type_name = "vstdec";
-//	fmt = &info->codec_param->dec_fmt;
-//    } else {
-//	type_name = "vstenc";
-//	fmt = &info->codec_param->enc_fmt;
-//    }
-//    name.ptr = (char*) pj_pool_alloc(pool, M);
-//    name.slen = pj_ansi_snprintf(name.ptr, M, "%s%p", type_name, stream);
-//    pi = &channel->port.info;
-//
-//    /* Init channel info. */
-//    channel->stream = stream;
-//    channel->dir = dir;
-//    channel->paused = 1;
-//    channel->pt = pt;
-//
-//    /* Allocate buffer for outgoing packet. */
-//    if (dir == PJMEDIA_DIR_ENCODING) {
-//	channel->buf_size = sizeof(pjmedia_rtp_hdr) + stream->frame_size;
-//
-//	/* It should big enough to hold (minimally) RTCP SR with an SDES. */
-//	min_out_pkt_size =  sizeof(pjmedia_rtcp_sr_pkt) +
-//			    sizeof(pjmedia_rtcp_common) +
-//			    (4 + (unsigned)stream->cname.slen) +
-//			    32;
-//
-//	if (channel->buf_size < min_out_pkt_size)
-//	    channel->buf_size = min_out_pkt_size;
-//
-//	channel->buf = pj_pool_alloc(pool, channel->buf_size);
-////	channel->buf = pj_pool_alloc(pool, sizeof(pjmedia_rtp_hdr)+sizeof(unsigned char)*stream->frame_size );
-//        
-////        PJ_LOG(4, (name.ptr,
-////	       "%s \n\n"
-////                "stream->frame_size: %d\n"
-////                "channel->buf_size: %d\nchannel->buf_size: %d\n\n\n",stream->frame_size, channel->buf_size,
-////	       sizeof(pjmedia_rtp_hdr)+sizeof(unsigned char)*stream->frame_size));
-//	PJ_ASSERT_RETURN(channel->buf != NULL, PJ_ENOMEM);
-//    }
-//
-//    /* Create RTP and RTCP sessions: */
-//    {
-//	pjmedia_rtp_session_setting settings;
-//
-//	settings.flags = (pj_uint8_t)((info->rtp_seq_ts_set << 2) |
-//				      (info->has_rem_ssrc << 4) | 3);
-//	settings.default_pt = pt;
-//	settings.sender_ssrc = info->ssrc;
-//	settings.peer_ssrc = info->rem_ssrc;
-//	settings.seq = info->rtp_seq;
-//	settings.ts = info->rtp_ts;
-//	status = pjmedia_rtp_session_init2(&channel->rtp, settings);
-//    }
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Init port. */
-//    pjmedia_port_info_init2(pi, &name, SIGNATURE, dir, fmt);
-//    if (dir == PJMEDIA_DIR_DECODING) {
-//	channel->port.get_frame = &get_frame;
-//    } else {
-//	pi->fmt.id = info->codec_param->dec_fmt.id;
-//	channel->port.put_frame = &put_frame;
-//    }
-//
-//    /* Init port. */
-//    channel->port.port_data.pdata = stream;
-//
-//    PJ_LOG(4, (name.ptr,
-//	       "%s channel created %dx%d %s%s%.*s %d/%d(~%d)fps",
-//	       (dir==PJMEDIA_DIR_ENCODING?"Encoding":"Decoding"),
-//	       pi->fmt.det.vid.size.w, pi->fmt.det.vid.size.h,
-//	       pjmedia_fourcc_name(pi->fmt.id, fourcc_name),
-//	       (dir==PJMEDIA_DIR_ENCODING?"->":"<-"),
-//	       info->codec_info.encoding_name.slen,
-//	       info->codec_info.encoding_name.ptr,
-//	       pi->fmt.det.vid.fps.num, pi->fmt.det.vid.fps.denum,
-//	       pi->fmt.det.vid.fps.num/pi->fmt.det.vid.fps.denum));
-//
-//    /* Done. */
-//    *p_channel = channel;
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Create stream.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
-//					pjmedia_endpt *endpt,
-//					pj_pool_t *pool,
-//					pjmedia_vid_stream_info *info,
-//					pjmedia_transport *tp,
-//					void *user_data,
-//					pjmedia_vid_stream **p_stream)
-//{
-//    enum { M = 32 };
-//    pj_pool_t *own_pool = NULL;
-//    pjmedia_vid_stream *stream;
-//    unsigned jb_init, jb_max, jb_min_pre, jb_max_pre;
-//    int frm_ptime, chunks_per_frm;
-//    pjmedia_video_format_detail *vfd_enc, *vfd_dec;
-//    char *p;
-//    pj_status_t status;
-//    pjmedia_transport_attach_param att_param;
-//
-//    if (!pool) {
-//	own_pool = pjmedia_endpt_create_pool( endpt, "vstrm%p",
-//	                                      PJMEDIA_VSTREAM_SIZE,
-//	                                      PJMEDIA_VSTREAM_INC);
-//	PJ_ASSERT_RETURN(own_pool != NULL, PJ_ENOMEM);
-//	pool = own_pool;
-//    }
-//
-//    /* Allocate stream */
-//    stream = PJ_POOL_ZALLOC_T(pool, pjmedia_vid_stream);
-//    PJ_ASSERT_RETURN(stream != NULL, PJ_ENOMEM);
-//    stream->own_pool = own_pool;
-//
-//    /* Get codec manager */
-//    stream->codec_mgr = pjmedia_vid_codec_mgr_instance();
-//    PJ_ASSERT_RETURN(stream->codec_mgr, PJMEDIA_CODEC_EFAILED);
-//
-//    /* Init stream/port name */
-//    stream->name.ptr = (char*) pj_pool_alloc(pool, M);
-//    stream->name.slen = pj_ansi_snprintf(stream->name.ptr, M,
-//					 "vstrm%p", stream);
-//
-//    /* Create and initialize codec: */
-//    status = pjmedia_vid_codec_mgr_alloc_codec(stream->codec_mgr,
-//					       &info->codec_info,
-//					       &stream->codec);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Get codec param: */
-//    if (!info->codec_param) {
-//	pjmedia_vid_codec_param def_param;
-//
-//	status = pjmedia_vid_codec_mgr_get_default_param(stream->codec_mgr,
-//						         &info->codec_info,
-//						         &def_param);
-//	if (status != PJ_SUCCESS)
-//	    return status;
-//
-//	info->codec_param = pjmedia_vid_codec_param_clone(pool, &def_param);
-//	pj_assert(info->codec_param);
-//    }
-//
-//    /* Init codec param and adjust MTU */
-//    info->codec_param->dir = info->dir;
-//    info->codec_param->enc_mtu -= (sizeof(pjmedia_rtp_hdr) +
-//				   PJMEDIA_STREAM_RESV_PAYLOAD_LEN);
-//    if (info->codec_param->enc_mtu > PJMEDIA_MAX_MTU)
-//	info->codec_param->enc_mtu = PJMEDIA_MAX_MTU;
-//
-//    /* Packet size estimation for decoding direction */
-//    vfd_enc = pjmedia_format_get_video_format_detail(
-//					&info->codec_param->enc_fmt, PJ_TRUE);
-//    vfd_dec = pjmedia_format_get_video_format_detail(
-//					&info->codec_param->dec_fmt, PJ_TRUE);
-//
-//    /* Init stream: */
-//    stream->endpt = endpt;
-//    stream->dir = info->dir;
-//    stream->user_data = user_data;
-//    stream->rtcp_interval = (PJMEDIA_RTCP_INTERVAL-500 + (pj_rand()%1000)) *
-//			    info->codec_info.clock_rate / 1000;
-//    stream->rtcp_sdes_bye_disabled = info->rtcp_sdes_bye_disabled;
-//
-//    stream->jb_last_frm = PJMEDIA_JB_NORMAL_FRAME;
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-//    stream->use_ka = info->use_ka;
-//#endif
-//    stream->num_keyframe = info->sk_cfg.count;
-//
-//    stream->cname = info->cname;
-//    if (stream->cname.slen == 0) {
-//	/* Build random RTCP CNAME. CNAME has user@host format */
-//    	stream->cname.ptr = p = (char*) pj_pool_alloc(pool, 20);
-//    	pj_create_random_string(p, 5);
-//    	p += 5;
-//    	*p++ = '@'; *p++ = 'p'; *p++ = 'j';
-//    	pj_create_random_string(p, 6);
-//    	p += 6;
-//    	*p++ = '.'; *p++ = 'o'; *p++ = 'r'; *p++ = 'g';
-//    	stream->cname.slen = p - stream->cname.ptr;
-//    }
-//
-//    /* Create mutex to protect jitter buffer: */
-//
-//    status = pj_mutex_create_simple(pool, NULL, &stream->jb_mutex);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Init and open the codec. */
-//    status = pjmedia_vid_codec_init(stream->codec, pool);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//    status = pjmedia_vid_codec_open(stream->codec, info->codec_param);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Subscribe to codec events */
-//    pjmedia_event_subscribe(NULL, &stream_event_cb, stream,
-//                            stream->codec);
-//
-//    /* Estimate the maximum frame size */
-//    stream->frame_size = vfd_enc->size.w * vfd_enc->size.h * 4;
-//
-//#if 0
-//    stream->frame_size = vfd_enc->max_bps/8 * vfd_enc->fps.denum /
-//			 vfd_enc->fps.num;
-//
-//    /* As the maximum frame_size is not represented directly by maximum bps
-//     * (which includes intra and predicted frames), let's increase the
-//     * frame size value for safety.
-//     */
-//    stream->frame_size <<= 4;
-//#endif
-//
-//    /* Validate the frame size */
-//    if (stream->frame_size == 0 ||
-//	stream->frame_size > PJMEDIA_MAX_VIDEO_ENC_FRAME_SIZE)
-//    {
-//	stream->frame_size = PJMEDIA_MAX_VIDEO_ENC_FRAME_SIZE;
-//    }
-//
-//    /* Get frame length in timestamp unit */
-//    stream->frame_ts_len = info->codec_info.clock_rate *
-//                           vfd_enc->fps.denum / vfd_enc->fps.num;
-//
-//    /* Initialize send rate states */
-//    pj_get_timestamp_freq(&stream->ts_freq);
-//    if (info->rc_cfg.bandwidth == 0)
-//	info->rc_cfg.bandwidth = vfd_enc->max_bps;
-//
-//    /* For simple blocking, need to have bandwidth large enough, otherwise
-//     * we can slow down the transmission too much
-//     */
-//    if (info->rc_cfg.method==PJMEDIA_VID_STREAM_RC_SIMPLE_BLOCKING &&
-//	info->rc_cfg.bandwidth < vfd_enc->avg_bps * 3)
-//    {
-//	info->rc_cfg.bandwidth = vfd_enc->avg_bps * 3;
-//    }
-//
-//    /* Override the initial framerate in the decoding direction. This initial
-//     * value will be used by the renderer to configure its clock, and setting
-//     * it to a bit higher value can avoid the possibility of high latency
-//     * caused by clock drift (remote encoder clock runs slightly faster than
-//     * local renderer clock) or video setup lag. Note that the actual framerate
-//     * will be continuously calculated based on the incoming RTP timestamps.
-//     */
-//    vfd_dec->fps.num = vfd_dec->fps.num * 3 / 2;
-//    stream->dec_max_fps = vfd_dec->fps;
-//
-//    /* Create decoder channel */
-//    status = create_channel( pool, stream, PJMEDIA_DIR_DECODING,
-//			     info->rx_pt, info, &stream->dec);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Create encoder channel */
-//    status = create_channel( pool, stream, PJMEDIA_DIR_ENCODING,
-//			     info->tx_pt, info, &stream->enc);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Create temporary buffer for immediate decoding */
-//    stream->dec_max_size = vfd_dec->size.w * vfd_dec->size.h * 4;
-//    stream->dec_frame.buf = pj_pool_alloc(pool, stream->dec_max_size);
-//
-//    /* Init jitter buffer parameters: */
-//    frm_ptime	    = 1000 * vfd_enc->fps.denum / vfd_enc->fps.num;
-//    chunks_per_frm  = stream->frame_size / PJMEDIA_MAX_MRU;
-//    if (chunks_per_frm < MIN_CHUNKS_PER_FRM)
-//	chunks_per_frm = MIN_CHUNKS_PER_FRM;
-//
-//    /* JB max count, default 500ms */
-//    if (info->jb_max >= frm_ptime)
-//	jb_max	    = info->jb_max * chunks_per_frm / frm_ptime;
-//    else
-//	jb_max	    = 500 * chunks_per_frm / frm_ptime;
-//
-//    /* JB min prefetch, default 1 frame */
-//    if (info->jb_min_pre >= frm_ptime)
-//	jb_min_pre  = info->jb_min_pre * chunks_per_frm / frm_ptime;
-//    else
-//	jb_min_pre  = 1;
-//
-//    /* JB max prefetch, default 4/5 JB max count */
-//    if (info->jb_max_pre >= frm_ptime)
-//	jb_max_pre  = info->jb_max_pre * chunks_per_frm / frm_ptime;
-//    else
-//	jb_max_pre  = jb_max * 4 / 5;
-//
-//    /* JB init prefetch, default 0 */
-//    if (info->jb_init >= frm_ptime)
-//	jb_init  = info->jb_init * chunks_per_frm / frm_ptime;
-//    else
-//	jb_init  = 0;
-//
-//    /* Allocate array for temporary storage for assembly of incoming
-//     * frames. Add more just in case.
-//     */
-//    stream->rx_frame_cnt = chunks_per_frm * 2;
-//    stream->rx_frames = pj_pool_calloc(pool, stream->rx_frame_cnt,
-//                                       sizeof(stream->rx_frames[0]));
-//
-//    /* Create jitter buffer */
-//    status = pjmedia_jbuf_create(pool, &stream->dec->port.info.name,
-//                                 PJMEDIA_MAX_MRU,
-//				 1000 * vfd_enc->fps.denum / vfd_enc->fps.num,
-//				 jb_max, &stream->jb);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//
-//    /* Set up jitter buffer */
-//    pjmedia_jbuf_set_adaptive(stream->jb, jb_init, jb_min_pre, jb_max_pre);
-//    pjmedia_jbuf_set_discard(stream->jb, PJMEDIA_JB_DISCARD_NONE);
-//
-//    /* Init RTCP session: */
-//    {
-//	pjmedia_rtcp_session_setting rtcp_setting;
-//
-//	pjmedia_rtcp_session_setting_default(&rtcp_setting);
-//	rtcp_setting.name = stream->name.ptr;
-//	rtcp_setting.ssrc = info->ssrc;
-//	rtcp_setting.rtp_ts_base = pj_ntohl(stream->enc->rtp.out_hdr.ts);
-//	rtcp_setting.clock_rate = info->codec_info.clock_rate;
-//	rtcp_setting.samples_per_frame = 1;
-//
-//	pjmedia_rtcp_init2(&stream->rtcp, &rtcp_setting);
-//    }
-//
-//    /* Allocate outgoing RTCP buffer, should be enough to hold SR/RR, SDES,
-//     * BYE, and XR.
-//     */
-//    stream->out_rtcp_pkt_size =  sizeof(pjmedia_rtcp_sr_pkt) +
-//				 sizeof(pjmedia_rtcp_common) +
-//				 (4 + (unsigned)stream->cname.slen) +
-//				 32;
-//    if (stream->out_rtcp_pkt_size > PJMEDIA_MAX_MTU)
-//	stream->out_rtcp_pkt_size = PJMEDIA_MAX_MTU;
-//
-//    stream->out_rtcp_pkt = pj_pool_alloc(pool, stream->out_rtcp_pkt_size);
-//    pj_bzero(&att_param, sizeof(att_param));
-//    att_param.stream = stream;
-//    att_param.media_type = PJMEDIA_TYPE_VIDEO;
-//    att_param.user_data = stream;
-//    pj_sockaddr_cp(&att_param.rem_addr, &info->rem_addr);
-//    pj_sockaddr_cp(&stream->rem_rtp_addr, &info->rem_addr);
-//    if (info->rtcp_mux) {
-//	pj_sockaddr_cp(&att_param.rem_rtcp, &info->rem_addr);
-//    } else if (pj_sockaddr_has_addr(&info->rem_rtcp.addr)) {
-//	pj_sockaddr_cp(&att_param.rem_rtcp, &info->rem_rtcp);
-//    }
-//    att_param.addr_len = pj_sockaddr_get_len(&info->rem_addr);
-//    att_param.rtp_cb2 = &on_rx_rtp;
-//    att_param.rtcp_cb = &on_rx_rtcp;
-//
-//    /* Only attach transport when stream is ready. */
-//    status = pjmedia_transport_attach2(tp, &att_param);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    stream->transport = tp;
-//
-//    /* Send RTCP SDES */
-//    if (!stream->rtcp_sdes_bye_disabled) {
-//        pjmedia_vid_stream_send_rtcp_sdes(stream);
-//    }
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-//    /* NAT hole punching by sending KA packet via RTP transport. */
-//    if (stream->use_ka)
-//	send_keep_alive_packet(stream);
-//#endif
-//
-//#if TRACE_JB
-//    {
-//	char trace_name[PJ_MAXPATH];
-//	pj_ssize_t len;
-//
-//	pj_ansi_snprintf(trace_name, sizeof(trace_name),
-//			 TRACE_JB_PATH_PREFIX "%s.csv",
-//			 channel->port.info.name.ptr);
-//	status = pj_file_open(pool, trace_name, PJ_O_RDWR,
-//			      &stream->trace_jb_fd);
-//	if (status != PJ_SUCCESS) {
-//	    stream->trace_jb_fd = TRACE_JB_INVALID_FD;
-//	    PJ_LOG(3,(THIS_FILE, "Failed creating RTP trace file '%s'",
-//		      trace_name));
-//	} else {
-//	    stream->trace_jb_buf = (char*)pj_pool_alloc(pool, PJ_LOG_MAX_SIZE);
-//
-//	    /* Print column header */
-//	    len = pj_ansi_snprintf(stream->trace_jb_buf, PJ_LOG_MAX_SIZE,
-//				   "Time, Operation, Size, Frame Count, "
-//				   "Frame type, RTP Seq, RTP TS, RTP M, "
-//				   "JB size, JB burst level, JB prefetch\n");
-//	    if (len < 1 || len >= PJ_LOG_MAX_SIZE)
-//		len = PJ_LOG_MAX_SIZE - 1;
-//	    pj_file_write(stream->trace_jb_fd, stream->trace_jb_buf, &len);
-//	    pj_file_flush(stream->trace_jb_fd);
-//	}
-//    }
-//#endif
-//
-//    /* Save the stream info */
-//    pj_memcpy(&stream->info, info, sizeof(*info));
-//    stream->info.codec_param = pjmedia_vid_codec_param_clone(
-//						pool, info->codec_param);
-//
-//
-////    HISI_VENC_USER_INIT();
-//    
-////    pj_json_elem *elem;
-//    char *out_buf;
-////    unsigned size;
-////    pj_off_t size;
-//    pj_json_err_info err;
-//    
-//    pj_json_elem* elem = (pj_json_elem*)load_json_config(pool, "config.json");
-////    pj_json_elem* elem = (pj_json_elem*)load_json_config(pool, "config.json", &size);
-//    
-//    if (elem != NULL) {
-//    
-////    size = (unsigned)strlen(json_doc1);
-////    elem = pj_json_parse(pool, json_doc1, &size, &err);
-////    if (!elem) {
-////	PJ_LOG(1, (THIS_FILE, "  Error: json_verify_1() parse error"));
-//////	goto on_error;
-////    }
-//    
-////    size = (unsigned)size * 2;
-////    size = (unsigned)strlen(json_doc1) * 2;
-////    out_buf = pj_pool_alloc(pool, size);
-//
-////    if (pj_json_write(elem, out_buf, &size)) {
-////	PJ_LOG(1, (THIS_FILE, "  Error: json_verify_1() write error"));
-//////	goto on_error;
-////    }
-//
-////    PJ_LOG(3,(THIS_FILE, "Json document:\n%s", out_buf));
-//    
-////    PJ_LOG(1, (THIS_FILE, "%s", elem->value.children.next->name));
-////    pj_json_elem* sensor_json_object = (pj_json_elem*)find_value_by_name(elem, "groups");
-////    PJ_LOG(1, (THIS_FILE, "%s", sensor_json_object->name));
-//    
-////    stream->hisi_app_config;
-//    pj_bzero(&stream->hisi_app_config, sizeof(stream->hisi_app_config));
-//    
-//    stream->hisi_app_config = (HISI_SDK_APP_S*)fill_app_from_config(pool, elem);
-////    fill_app_from_config(pool, elem, &stream->hisi_app_config);
-//    
-//    PJ_LOG(1, (THIS_FILE, "stream->hisi_app_config.stViConfig.sensor.lib_name = %s", stream->hisi_app_config->stViConfig.sensor.lib_name));
-//    PJ_LOG(1, (THIS_FILE, "stream->hisi_app_config.stViConfig.sensor.sensor_name = %s", stream->hisi_app_config->stViConfig.sensor.sensor_name));
-////===========================================================================================
-////    HI_S32 s32Ret = HI_SUCCESS;
-//    
-//    start_sdk(stream->hisi_app_config);
-//    }
-//    stream->has_more_data = PJ_FALSE;
-//
-//    pjmedia_h264_packetizer_cfg  pktz_cfg;
-//    pj_bzero(&pktz_cfg, sizeof(pktz_cfg));
-//    // pktz_cfg.mtu = PJMEDIA_MAX_VIDEO_ENC_FRAME_SIZE - sizeof(pjmedia_rtp_hdr);
-//    // pktz_cfg.mtu = PJMEDIA_MAX_VID_PAYLOAD_SIZE - sizeof(pjmedia_rtp_hdr);
-//    pktz_cfg.mtu = PJMEDIA_MAX_VID_PAYLOAD_SIZE;
-//    // pktz_cfg.mtu = param->enc_mtu;
-//    // pktz_cfg.mtu = 170030;
-//    pktz_cfg.unpack_nal_start = 4;
-//    /* Packetization mode */
-//    pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_NON_INTERLEAVED;
-//    // pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_INTERLEAVED;
-//    // pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_SINGLE_NAL;
-//
-//    // vp->cv_pool = pj_pool_create(vp->pool->factory, "cv_pool", 1024, 1024, NULL);
-//    // if (!vp->cv_pool)
-//    //     return PJ_ENOMEM;
-//
-//    // pj_status_t
-////    status = pjmedia_h264_packetizer_create(stream->own_pool, &pktz_cfg,
-//    status = pjmedia_h264_packetizer_create(pool, &pktz_cfg,
-//                                            &stream->pktz);
-//    if (status != PJ_SUCCESS) {
-//        PJ_LOG(3,(THIS_FILE, "%s: pjmedia_h264_packetizer_create failed", __FUNCTION__));
-//        return status;
-//    } else {
-//        PJ_LOG(3,(THIS_FILE, "%s: pjmedia_h264_packetizer_create SUCCESS", __FUNCTION__));
-//    }
-//
-//
-//    // ===================================================================
-//    status = pj_thread_create (pool,
-//               "hisivideo_capture",
-//               cv_thread_func,
-//               stream,
-//               0,
-//               0,
-//               &stream->thread);
-//    if (status != PJ_SUCCESS) {
-//        PJ_LOG(4, (THIS_FILE, "PJMEDIA_DIR_CAPTURE VIDEO pj_thread_create status == PJ_ERROR"));
-//        stream->thread_quit = PJ_TRUE;
-//        // pj_thread_join(strm->play_thread);
-//        // pj_thread_destroy(strm->play_thread);
-//        // strm->play_thread = NULL;
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "PJMEDIA_DIR_CAPTURE VIDEO pj_thread_create status == PJ_SUCCESS"));
-//    }
-//
-//    stream->cv_pool = pjmedia_endpt_create_pool( endpt, "cv_pool",
-//	                                      PJMEDIA_VSTREAM_SIZE,
-//	                                      PJMEDIA_VSTREAM_INC);
-//    PJ_ASSERT_RETURN(stream->cv_pool != NULL, PJ_ENOMEM);
-//
-//    // stream->cv_pool = pj_pool_create(pool, "cv_pool", 1024, 1024, NULL);
-//    // if (!stream->cv_pool)
-//    //     return PJ_ENOMEM;
-//    // ===================================================================
-//
-//    /* Success! */
-//    *p_stream = stream;
-//
-//    PJ_LOG(4,(THIS_FILE, "Video stream %s created", stream->name.ptr));
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Destroy stream.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_destroy( pjmedia_vid_stream *stream )
-//{
-//    PJ_LOG(4, (THIS_FILE, "%s: ===================================pjmedia_vid_stream_destroy===================================",
-//                                    __FUNCTION__));
-//    PJ_ASSERT_RETURN(stream != NULL, PJ_EINVAL);
-//
-//#if TRACE_RC
-//    {
-//	unsigned total_time;
-//
-//	total_time = pj_elapsed_msec(&stream->tx_start, &stream->tx_end);
-//	PJ_LOG(5, (stream->name.ptr,
-//		   "RC stat: pkt_cnt=%.2f/image, sleep=%.2fms/s, fps=%.2f",
-//		   stream->rc_total_pkt*1.0/stream->rc_total_img,
-//		   stream->rc_total_sleep*1000.0/total_time,
-//		   stream->rc_total_img*1000.0/total_time));
-//    }
-//#endif
-//
-//    /* Send RTCP BYE (also SDES) */
-//    if (!stream->rtcp_sdes_bye_disabled) {
-//	send_rtcp(stream, PJ_TRUE, PJ_TRUE);
-//    }
-//
-//    /* Detach from transport
-//     * MUST NOT hold stream mutex while detaching from transport, as
-//     * it may cause deadlock. See ticket #460 for the details.
-//     */
-//    if (stream->transport) {
-//	pjmedia_transport_detach(stream->transport, stream);
-//	stream->transport = NULL;
-//    }
-//
-//    /* This function may be called when stream is partly initialized. */
-//    if (stream->jb_mutex)
-//	pj_mutex_lock(stream->jb_mutex);
-//
-//
-//    /* Free codec. */
-//    if (stream->codec) {
-//        pjmedia_event_unsubscribe(NULL, &stream_event_cb, stream,
-//                                  stream->codec);
-//	pjmedia_vid_codec_close(stream->codec);
-//	pjmedia_vid_codec_mgr_dealloc_codec(stream->codec_mgr, stream->codec);
-//	stream->codec = NULL;
-//    }
-//
-//    /* Free mutex */
-//
-//    if (stream->jb_mutex) {
-//	pj_mutex_destroy(stream->jb_mutex);
-//	stream->jb_mutex = NULL;
-//    }
-//
-//    /* Destroy jitter buffer */
-//    if (stream->jb) {
-//	pjmedia_jbuf_destroy(stream->jb);
-//	stream->jb = NULL;
-//    }
-//
-//#if TRACE_JB
-//    if (TRACE_JB_OPENED(stream)) {
-//	pj_file_close(stream->trace_jb_fd);
-//	stream->trace_jb_fd = TRACE_JB_INVALID_FD;
-//    }
-//#endif
-//
-//    pj_pool_safe_release(&stream->cv_pool);
-//    pj_pool_safe_release(&stream->own_pool);
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Get the port interface.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_get_port(pjmedia_vid_stream *stream,
-//						pjmedia_dir dir,
-//						pjmedia_port **p_port )
-//{
-//    PJ_ASSERT_RETURN(dir==PJMEDIA_DIR_ENCODING || dir==PJMEDIA_DIR_DECODING,
-//		     PJ_EINVAL);
-//
-//    if (dir == PJMEDIA_DIR_ENCODING)
-//	*p_port = &stream->enc->port;
-//    else
-//	*p_port = &stream->dec->port;
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Get the transport object
-// */
-//PJ_DEF(pjmedia_transport*) pjmedia_vid_stream_get_transport(
-//						    pjmedia_vid_stream *st)
-//{
-//    return st->transport;
-//}
-//
-//
-///*
-// * Get stream statistics.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_get_stat(
-//					    const pjmedia_vid_stream *stream,
-//					    pjmedia_rtcp_stat *stat)
-//{
-//    PJ_ASSERT_RETURN(stream && stat, PJ_EINVAL);
-//
-//    pj_memcpy(stat, &stream->rtcp.stat, sizeof(pjmedia_rtcp_stat));
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Reset the stream statistics in the middle of a stream session.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_reset_stat(pjmedia_vid_stream *stream)
-//{
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//
-//    pjmedia_rtcp_init_stat(&stream->rtcp.stat);
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Get jitter buffer state.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_get_stat_jbuf(
-//					    const pjmedia_vid_stream *stream,
-//					    pjmedia_jb_state *state)
-//{
-//    PJ_ASSERT_RETURN(stream && state, PJ_EINVAL);
-//    return pjmedia_jbuf_get_state(stream->jb, state);
-//}
-//
-//
-///*
-// * Get the stream info.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_get_info(
-//					    const pjmedia_vid_stream *stream,
-//					    pjmedia_vid_stream_info *info)
-//{
-//    PJ_ASSERT_RETURN(stream && info, PJ_EINVAL);
-//    pj_memcpy(info, &stream->info, sizeof(*info));
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Start stream.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_start(pjmedia_vid_stream *stream)
-//{
-//
-//    PJ_ASSERT_RETURN(stream && stream->enc && stream->dec, PJ_EINVALIDOP);
-//
-//    if (stream->enc && (stream->dir & PJMEDIA_DIR_ENCODING)) {
-//	stream->enc->paused = 0;
-//	//pjmedia_snd_stream_start(stream->enc->snd_stream);
-//	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream started"));
-//    } else {
-//	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream paused"));
-//    }
-//
-//    if (stream->dec && (stream->dir & PJMEDIA_DIR_DECODING)) {
-//	stream->dec->paused = 0;
-//	//pjmedia_snd_stream_start(stream->dec->snd_stream);
-//	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream started"));
-//    } else {
-//	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream paused"));
-//    }
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Check status.
-// */
-//PJ_DEF(pj_bool_t) pjmedia_vid_stream_is_running(pjmedia_vid_stream *stream,
-//                                                pjmedia_dir dir)
-//{
-//    pj_bool_t is_running = PJ_TRUE;
-//
-//    PJ_ASSERT_RETURN(stream, PJ_FALSE);
-//
-//    if (dir & PJMEDIA_DIR_ENCODING) {
-//	is_running &= (stream->enc && !stream->enc->paused);
-//    }
-//
-//    if (dir & PJMEDIA_DIR_DECODING) {
-//	is_running &= (stream->dec && !stream->dec->paused);
-//    }
-//
-//    return is_running;
-//}
-//
-///*
-// * Pause stream.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_pause(pjmedia_vid_stream *stream,
-//					     pjmedia_dir dir)
-//{
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//
-//    if ((dir & PJMEDIA_DIR_ENCODING) && stream->enc) {
-//	stream->enc->paused = 1;
-//	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream paused"));
-//    }
-//
-//    if ((dir & PJMEDIA_DIR_DECODING) && stream->dec) {
-//	stream->dec->paused = 1;
-//
-//	/* Also reset jitter buffer */
-//	pj_mutex_lock( stream->jb_mutex );
-//	pjmedia_jbuf_reset(stream->jb);
-//	pj_mutex_unlock( stream->jb_mutex );
-//
-//	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream paused"));
-//    }
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Resume stream
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_resume(pjmedia_vid_stream *stream,
-//					      pjmedia_dir dir)
-//{
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//
-//    if ((dir & PJMEDIA_DIR_ENCODING) && stream->enc) {
-//	stream->enc->paused = 0;
-//	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream resumed"));
-//    }
-//
-//    if ((dir & PJMEDIA_DIR_DECODING) && stream->dec) {
-//	stream->dec->paused = 0;
-//	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream resumed"));
-//    }
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Force stream to send video keyframe.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_send_keyframe(
-//						pjmedia_vid_stream *stream)
-//{
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//
-//    if (!pjmedia_vid_stream_is_running(stream, PJMEDIA_DIR_ENCODING))
-//	return PJ_EINVALIDOP;
-//
-//    stream->force_keyframe = PJ_TRUE;
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Send RTCP SDES.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_send_rtcp_sdes(
-//						pjmedia_vid_stream *stream)
-//{
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//
-//    return send_rtcp(stream, PJ_TRUE, PJ_FALSE);
-//}
-//
-//
-///*
-// * Send RTCP BYE.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_send_rtcp_bye(
-//						pjmedia_vid_stream *stream)
-//{
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//
-//    stream->thread_quit = PJ_TRUE;
-//    for (int i=0; !stream->thread_exited && i<100; ++i)
-//        // pj_thread_sleep(10);
-//        pj_thread_sleep(1);
-//    pj_thread_sleep(1);
-//
-//    PJ_LOG(4,(THIS_FILE, "Stopping stream.."));
-//
-//    if (stream->enc && stream->transport) {
-//	return send_rtcp(stream, PJ_TRUE, PJ_TRUE);
-//    }
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Initialize the video stream rate control with default settings.
-// */
-//PJ_DEF(void)
-//pjmedia_vid_stream_rc_config_default(pjmedia_vid_stream_rc_config *cfg)
-//{
-//    pj_bzero(cfg, sizeof(*cfg));
-//    // cfg->method = PJMEDIA_VID_STREAM_RC_SIMPLE_BLOCKING;
-//    cfg->method = PJMEDIA_VID_STREAM_RC_NONE;
-//}
-//
-//
-///*
-// * Initialize the video stream send keyframe with default settings.
-// */
-//PJ_DEF(void)
-//pjmedia_vid_stream_sk_config_default(pjmedia_vid_stream_sk_config *cfg)
-//{
-//    pj_bzero(cfg, sizeof(*cfg));
-//    cfg->count = PJMEDIA_VID_STREAM_START_KEYFRAME_CNT;
-//    cfg->interval = PJMEDIA_VID_STREAM_START_KEYFRAME_INTERVAL_MSEC;
-//}
-//
-//
-///**
-// * Get RTP session information from video stream.
-// */
-//PJ_DEF(pj_status_t)
-//pjmedia_vid_stream_get_rtp_session_info(pjmedia_vid_stream *stream,
-//				    pjmedia_stream_rtp_sess_info *session_info)
-//{
-//    session_info->rx_rtp = &stream->dec->rtp;
-//    session_info->tx_rtp = &stream->enc->rtp;
-//    session_info->rtcp = &stream->rtcp;
-//    return PJ_SUCCESS;
-//}
-//
-//
-//#endif /* PJMEDIA_HAS_VIDEO */
-
-/* $Id$ */
-/*
- * Copyright (C) 2011 Teluu Inc. (http://www.teluu.com)
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
-//#include <pjmedia/vid_stream.h>
-//#include <pjmedia/errno.h>
-//#include <pjmedia/event.h>
-//#include <pjmedia/rtp.h>
-//#include <pjmedia/rtcp.h>
-//#include <pjmedia/jbuf.h>
-//#include <pj/array.h>
-//#include <pj/assert.h>
-//#include <pj/compat/socket.h>
-//#include <pj/errno.h>
-//#include <pj/ioqueue.h>
-//#include <pj/log.h>
-//#include <pj/os.h>
-//#include <pj/pool.h>
-//#include <pj/rand.h>
-//#include <pj/sock_select.h>
-//#include <pj/string.h>	    /* memcpy() */
-//
-//#include <pjmedia-codec/h263_packetizer.h>
-//#include <pjmedia-codec/h264_packetizer.h>
-//
-//#include "hi_comm_venc.h"
-//
-//#include <pjlib-util/json.h>
-//#include "hi_sdk/hisi_comm.h"
-//
-//
-////pj_json_elem* load_json_config(pj_pool_t *pool, const char *filename, pj_off_t *size);
-//pj_json_elem* load_json_config(pj_pool_t *pool, const char *filename);
-//int stop_sdk(HISI_SDK_APP_S *app);
-//int start_sdk(HISI_SDK_APP_S *app);
-//HISI_SDK_APP_S* fill_app_from_config(pj_pool_t *pool, pj_json_elem* value);
-//
-//
-//#if defined(PJMEDIA_HAS_VIDEO) && (PJMEDIA_HAS_VIDEO != 0)
-//
-//
-//#define THIS_FILE			"vid_stream.c"
-//#define ERRLEVEL			1
-//#define LOGERR_(expr)			PJ_PERROR(4,expr)
-//#define TRC_(expr)			PJ_LOG(5,expr)
-//#define SIGNATURE			PJMEDIA_SIG_PORT_VID_STREAM
-//
-//#define TRACE_RC			0
-//
-///* Tracing jitter buffer operations in a stream session to a CSV file.
-// * The trace will contain JB operation timestamp, frame info, RTP info, and
-// * the JB state right after the operation.
-// */
-//#define TRACE_JB			0	/* Enable/disable trace.    */
-//#define TRACE_JB_PATH_PREFIX		""	/* Optional path/prefix
-//						   for the CSV filename.    */
-//#if TRACE_JB
-//#   include <pj/file_io.h>
-//#   define TRACE_JB_INVALID_FD		((pj_oshandle_t)-1)
-//#   define TRACE_JB_OPENED(s)		(s->trace_jb_fd != TRACE_JB_INVALID_FD)
-//#endif
-//
-//#ifndef PJMEDIA_VSTREAM_SIZE
-//#   define PJMEDIA_VSTREAM_SIZE	1000
-//#endif
-//
-//#ifndef PJMEDIA_VSTREAM_INC
-//#   define PJMEDIA_VSTREAM_INC	1000
-//#endif
-//
-///* Due to network MTU limitation, a picture bitstream may be splitted into
-// * several chunks for RTP delivery. The chunk number may vary depend on the
-// * picture resolution and MTU. This constant specifies the minimum chunk
-// * number to be allocated to store a picture bitstream in decoding direction.
-// */
-//#define MIN_CHUNKS_PER_FRM	30
-//
-///*  Number of send error before repeat the report. */
-//#define SEND_ERR_COUNT_TO_REPORT	50
-////#define DUMP(varname) fprintf(stderr, "%s = %x", #varname, varname);
-//#define MY_VAR_DBG(varname)\
-//do{\
-//    PJ_LOG(4, (THIS_FILE, "%s: After line #%d, %s = %x", __FUNCTION__, __LINE__, #varname, varname));\
-//}while(0)
-//
-//#define MY_DBG()\
-//do{\
-//    PJ_LOG(4, (THIS_FILE, "%s: After line #%d", __FUNCTION__, __LINE__));\
-//}while(0)
-//
-///**
-// * Media channel.
-// */
-//typedef struct pjmedia_vid_channel
-//{
-//    pjmedia_vid_stream	   *stream;	    /**< Parent stream.		    */
-//    pjmedia_dir		    dir;	    /**< Channel direction.	    */
-//    pjmedia_port	    port;	    /**< Port interface.	    */
-//    unsigned		    pt;		    /**< Payload type.		    */
-//    pj_bool_t		    paused;	    /**< Paused?.		    */
-//    void		   *buf;	    /**< Output buffer.		    */
-//    unsigned		    buf_size;	    /**< Size of output buffer.	    */
-//    pjmedia_rtp_session	    rtp;	    /**< RTP session.		    */
-//} pjmedia_vid_channel;
-//
-//
-///**
-// * This structure describes media stream.
-// * A media stream is bidirectional media transmission between two endpoints.
-// * It consists of two channels, i.e. encoding and decoding channels.
-// * A media stream corresponds to a single "m=" line in a SDP session
-// * description.
-// */
-//struct pjmedia_vid_stream
-//{
-//    pj_pool_t		    *own_pool;      /**< Internal pool.		    */
-//    pjmedia_endpt	    *endpt;	    /**< Media endpoint.	    */
-//    pjmedia_vid_codec_mgr   *codec_mgr;	    /**< Codec manager.		    */
-//    pjmedia_vid_stream_info  info;	    /**< Stream info.		    */
-//
-//    pjmedia_vid_channel	    *enc;	    /**< Encoding channel.	    */
-//    pjmedia_vid_channel	    *dec;	    /**< Decoding channel.	    */
-//
-//    pjmedia_dir		     dir;	    /**< Stream direction.	    */
-//    void		    *user_data;	    /**< User data.		    */
-//    pj_str_t		     name;	    /**< Stream name		    */
-//    pj_str_t		     cname;	    /**< SDES CNAME		    */
-//
-//    pjmedia_transport	    *transport;	    /**< Stream transport.	    */
-//    unsigned		     send_err_cnt;  /**< Send error count.          */
-//
-//    pj_mutex_t		    *jb_mutex;
-//    pjmedia_jbuf	    *jb;	    /**< Jitter buffer.		    */
-//    char		     jb_last_frm;   /**< Last frame type from jb    */
-//    unsigned		     jb_last_frm_cnt;/**< Last JB frame type counter*/
-//
-//    pjmedia_rtcp_session     rtcp;	    /**< RTCP for incoming RTP.	    */
-//    pj_uint32_t		     rtcp_last_tx;  /**< RTCP tx time in timestamp  */
-//    pj_uint32_t		     rtcp_interval; /**< Interval, in timestamp.    */
-//    pj_bool_t		     initial_rr;    /**< Initial RTCP RR sent	    */
-//    pj_bool_t                rtcp_sdes_bye_disabled;/**< Send RTCP SDES/BYE?*/
-//    void		    *out_rtcp_pkt;  /**< Outgoing RTCP packet.	    */
-//    unsigned		     out_rtcp_pkt_size;
-//					    /**< Outgoing RTCP packet size. */
-//
-//    unsigned		     dec_max_size;  /**< Size of decoded/raw picture*/
-//    pjmedia_ratio	     dec_max_fps;   /**< Max fps of decoding dir.   */
-//    pjmedia_frame            dec_frame;	    /**< Current decoded frame.     */
-//    unsigned		     dec_delay_cnt; /**< Decoding delay (in frames).*/
-//    pjmedia_event            fmt_event;	    /**< Buffered fmt_changed event
-//                                                 to avoid deadlock	    */
-//    pjmedia_event            miss_keyframe_event;
-//					    /**< Buffered missing keyframe
-//                                                 event for delayed republish*/
-//
-//    unsigned		     frame_size;    /**< Size of encoded base frame.*/
-//    unsigned		     frame_ts_len;  /**< Frame length in timestamp. */
-//
-//    unsigned		     rx_frame_cnt;  /**< # of array in rx_frames    */
-//    pjmedia_frame	    *rx_frames;	    /**< Temp. buffer for incoming
-//					         frame assembly.	    */
-//    pj_bool_t		     force_keyframe;/**< Forced to encode keyframe? */
-//    unsigned		     num_keyframe;  /**< The number of keyframe needed
-//						 to be sent, after the stream
-//						 is created. */
-//    pj_timestamp	     last_keyframe_tx;
-//					    /**< Timestamp of the last
-//						 keyframe. */
-//
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-//    pj_bool_t		     use_ka;	       /**< Stream keep-alive with non-
-//						    codec-VAD mechanism is
-//						    enabled?		    */
-//    pj_timestamp	     last_frm_ts_sent; /**< Timestamp of last sending
-//					            packet		    */
-//#endif
-//
-//#if TRACE_JB
-//    pj_oshandle_t	     trace_jb_fd;   /**< Jitter tracing file handle.*/
-//    char		    *trace_jb_buf;  /**< Jitter tracing buffer.	    */
-//#endif
-//
-//    pjmedia_vid_codec	    *codec;	    /**< Codec instance being used. */
-//    pj_uint32_t		     last_dec_ts;   /**< Last decoded timestamp.    */
-//    int			     last_dec_seq;  /**< Last decoded sequence.     */
-//    pj_status_t		     rtp_rx_last_err; /**< Last RTP recv() error.   */
-//    pj_uint32_t		     rtp_tx_err_cnt;/**< The number of RTP
-//						 send() error		    */
-//    pj_uint32_t		     rtcp_tx_err_cnt;/**< The number of RTCP
-//						  send() error		    */
-//    pj_timestamp	     ts_freq;	    /**< Timestamp frequency.	    */
-//
-//    pj_sockaddr		     rem_rtp_addr;  /**< Remote RTP address	    */
-//    unsigned		     rem_rtp_flag;  /**< Indicator flag about
-//						 packet from this addr.
-//						 0=no pkt, 1=good ssrc pkts,
-//						 2=bad ssrc pkts	    */
-//    pj_sockaddr		     rtp_src_addr;  /**< Actual packet src addr.    */
-//    unsigned		     rtp_src_cnt;   /**< How many pkt from this addr*/
-//
-//#if TRACE_RC
-//    unsigned		     rc_total_sleep;
-//    unsigned		     rc_total_pkt;
-//    unsigned		     rc_total_img;
-//    pj_timestamp	     tx_start;
-//    pj_timestamp	     tx_end;
-//
-//    pj_bool_t                   thread_quit;
-//    pj_bool_t                   thread_exited;
-//    pj_bool_t                   thread_initialized;
-//    pj_thread_t                *thread;
-//    pj_pool_t                  *cv_pool;    /**< Video thread memory pool       */
-//    pjmedia_h264_packetizer *pktz;
-//    pj_bool_t has_more_data;
-//
-//    unsigned             enc_frame_size;
-//    unsigned             enc_processed;
-//    pj_uint8_t          *enc_frame_whole;
-//
-//    void                *enc_buf;
-//    unsigned             enc_buf_size;
-//#endif
-//    
-//    pj_bool_t                   thread_quit;
-//    pj_bool_t                   thread_exited;
-//    pj_bool_t                   thread_initialized;
-//    pj_thread_t                *thread;
-//    pj_pool_t                  *cv_pool;    /**< Video thread memory pool       */
-//    pj_pool_t		    *encoder_pool;
-//    pjmedia_h264_packetizer *pktz;
-//    pj_bool_t has_more_data;
-//    unsigned             enc_frame_size;
-//    unsigned             enc_processed;
-//    pj_uint8_t          *enc_frame_whole;
-//    pj_uint8_t          *enc_buf;
-////    void                *enc_buf;
-//    unsigned             enc_buf_size;
-//    HISI_SDK_APP_S *hisi_app_config;
-//};
-//struct pjmedia_vid_stream2
-//{
-//    pj_pool_t		    *own_pool;      /**< Internal pool.		    */
-//    pjmedia_endpt	    *endpt;	    /**< Media endpoint.	    */
-//    pjmedia_vid_codec_mgr   *codec_mgr;	    /**< Codec manager.		    */
-//    pjmedia_vid_stream_info  info;	    /**< Stream info.		    */
-//
-//    pjmedia_vid_channel	    *enc;	    /**< Encoding channel.	    */
-//    pjmedia_vid_channel	    *dec;	    /**< Decoding channel.	    */
-//
-//    pjmedia_dir		     dir;	    /**< Stream direction.	    */
-//    void		    *user_data;	    /**< User data.		    */
-//    pj_str_t		     name;	    /**< Stream name		    */
-//    pj_str_t		     cname;	    /**< SDES CNAME		    */
-//
-//    pjmedia_transport	    *transport;	    /**< Stream transport.	    */
-//
-//    pj_mutex_t		    *jb_mutex;
-//    pjmedia_jbuf	    *jb;	    /**< Jitter buffer.		    */
-//    char		     jb_last_frm;   /**< Last frame type from jb    */
-//    unsigned		     jb_last_frm_cnt;/**< Last JB frame type counter*/
-//
-//    pjmedia_rtcp_session     rtcp;	    /**< RTCP for incoming RTP.	    */
-//    pj_uint32_t		     rtcp_last_tx;  /**< RTCP tx time in timestamp  */
-//    pj_uint32_t		     rtcp_interval; /**< Interval, in timestamp.    */
-//    pj_bool_t		     initial_rr;    /**< Initial RTCP RR sent	    */
-//    pj_bool_t                rtcp_sdes_bye_disabled;/**< Send RTCP SDES/BYE?*/
-//    void		    *out_rtcp_pkt;  /**< Outgoing RTCP packet.	    */
-//    unsigned		     out_rtcp_pkt_size;
-//					    /**< Outgoing RTCP packet size. */
-//
-//    unsigned		     dec_max_size;  /**< Size of decoded/raw picture*/
-//    pjmedia_ratio	     dec_max_fps;   /**< Max fps of decoding dir.   */
-//    pjmedia_frame            dec_frame;	    /**< Current decoded frame.     */
-//    unsigned		     dec_delay_cnt; /**< Decoding delay (in frames).*/
-//    pjmedia_event            fmt_event;	    /**< Buffered fmt_changed event
-//                                                 to avoid deadlock	    */
-//    pjmedia_event            miss_keyframe_event;
-//					    /**< Buffered missing keyframe
-//                                                 event for delayed republish*/
-//
-//    unsigned		     frame_size;    /**< Size of encoded base frame.*/
-//    unsigned		     frame_ts_len;  /**< Frame length in timestamp. */
-//
-//    unsigned		     rx_frame_cnt;  /**< # of array in rx_frames    */
-//    pjmedia_frame	    *rx_frames;	    /**< Temp. buffer for incoming
-//					         frame assembly.	    */
-//    pj_bool_t		     force_keyframe;/**< Forced to encode keyframe? */
-//    unsigned		     num_keyframe;  /**< The number of keyframe needed
-//						 to be sent, after the stream
-//						 is created. */
-//    pj_timestamp	     last_keyframe_tx;
-//					    /**< Timestamp of the last
-//						 keyframe. */
-//
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-//    pj_bool_t		     use_ka;	       /**< Stream keep-alive with non-
-//						    codec-VAD mechanism is
-//						    enabled?		    */
-//    pj_timestamp	     last_frm_ts_sent; /**< Timestamp of last sending
-//					            packet		    */
-//#endif
-//
-//#if TRACE_JB
-//    pj_oshandle_t	     trace_jb_fd;   /**< Jitter tracing file handle.*/
-//    char		    *trace_jb_buf;  /**< Jitter tracing buffer.	    */
-//#endif
-//
-//    pjmedia_vid_codec	    *codec;	    /**< Codec instance being used. */
-//    pj_uint32_t		     last_dec_ts;   /**< Last decoded timestamp.    */
-//    int			     last_dec_seq;  /**< Last decoded sequence.     */
-//    pj_uint32_t		     rtp_tx_err_cnt;/**< The number of RTP
-//						 send() error		    */
-//    pj_uint32_t		     rtcp_tx_err_cnt;/**< The number of RTCP
-//						  send() error		    */
-//
-//    pj_timestamp	     ts_freq;	    /**< Timestamp frequency.	    */
-//
-//    pj_sockaddr		     rem_rtp_addr;  /**< Remote RTP address	    */
-//    unsigned		     rem_rtp_flag;  /**< Indicator flag about
-//						 packet from this addr.
-//						 0=no pkt, 1=good ssrc pkts,
-//						 2=bad ssrc pkts	    */
-//    pj_sockaddr		     rtp_src_addr;  /**< Actual packet src addr.    */
-//    unsigned		     rtp_src_cnt;   /**< How many pkt from this addr*/
-//
-//#if TRACE_RC
-//    unsigned		     rc_total_sleep;
-//    unsigned		     rc_total_pkt;
-//    unsigned		     rc_total_img;
-//    pj_timestamp	     tx_start;
-//    pj_timestamp	     tx_end;
-//#endif
-//    
-//    pj_bool_t                   thread_quit;
-//    pj_bool_t                   thread_exited;
-//    pj_bool_t                   thread_initialized;
-//    pj_thread_t                *thread;
-//    pj_pool_t                  *cv_pool;    /**< Video thread memory pool       */
-//    pj_pool_t		    *encoder_pool;
-//    pjmedia_h264_packetizer *pktz;
-//    pj_bool_t has_more_data;
-//    unsigned             enc_frame_size;
-//    unsigned             enc_processed;
-//    pj_uint8_t          *enc_frame_whole;
-//    pj_uint8_t          *enc_buf;
-////    void                *enc_buf;
-//    unsigned             enc_buf_size;
-//    HISI_SDK_APP_S *hisi_app_config;
-//};
-//
-//static int encode_more(pjmedia_vid_stream *stream, unsigned out_size, pjmedia_frame *output, pj_bool_t *has_more) {
-//    const pj_uint8_t *payload;
-//    pj_size_t payload_len;
-//    pj_status_t status;
-//
-//    // PJ_LOG(3, (THIS_FILE, "encode_more"));
-//
-//    PJ_ASSERT_RETURN(stream && out_size && output && has_more, PJ_EINVAL);
-//
-//    pjmedia_vid_stream* strm = (pjmedia_vid_stream *) stream;
-//
-//    if (strm->enc_processed < strm->enc_frame_size) {
-//        // PJ_LOG(4, (THIS_FILE, "%s: h264_passthrough_data->enc_processed < h264_passthrough_data->enc_frame_size", __FUNCTION__));
-//        /* We have outstanding frame in packetizer */
-//        status = pjmedia_h264_packetize(strm->pktz,
-//                                        strm->enc_frame_whole,
-//                                        strm->enc_frame_size,
-//                                        &strm->enc_processed,
-//                                        &payload, &payload_len);
-//        if (status != PJ_SUCCESS) {
-//            /* Reset */
-//            strm->enc_frame_size = strm->enc_processed = 0;
-//            *has_more = (strm->enc_processed <
-//                    strm->enc_frame_size);
-//            // *has_more = (strm->enc_processed <
-//            //         strm->enc_frame_size) ||
-//            //     (strm->ilayer < strm->iLayerNum);
-//
-//            PJ_PERROR(3,(THIS_FILE, status, "pjmedia_h264_packetize() error"));
-//            return status;
-//        }
-//
-//        PJ_ASSERT_RETURN(payload_len <= out_size, PJMEDIA_CODEC_EFRMTOOSHORT);
-//
-//        output->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//        pj_memcpy(output->buf, payload, payload_len);
-//        output->size = payload_len;
-//
-//        // if (h264_passthrough_data->bsi.eFrameType == videoFrameTypeIDR) {
-//        //    output->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-//        // }
-//        // if (strm->isIDR == PJ_TRUE) {
-//        //     // PJ_LOG(4, (THIS_FILE, "%s: This is keyframe", __FUNCTION__));
-//        //     output->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-//        //     strm->isIDR = PJ_FALSE;
-//        // } else {
-//        //     // PJ_LOG(4, (THIS_FILE, "%s: This is not keyframe", __FUNCTION__));
-//        // }
-//
-//        // PJ_LOG(4, (THIS_FILE, "%s: strm->enc_processed   = %u of %u", __FUNCTION__, strm->enc_processed, strm->enc_frame_size));
-//        // strm->ilayer++;
-//        *has_more = (strm->enc_processed < strm->enc_frame_size);
-//        // *has_more = (strm->enc_processed < strm->enc_frame_size) ||
-//        //         (strm->ilayer < strm->iLayerNum);
-//        // if (*has_more == PJ_TRUE) {
-//        //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_TRUE", __FUNCTION__));
-//        // } else {
-//        //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_FALSE", __FUNCTION__));
-//        // }
-//        return PJ_SUCCESS;
-//    }
-//
-//    strm->enc_frame_size = strm->enc_buf_size;
-//
-//    strm->enc_frame_whole = strm->enc_buf;
-//    // h264_passthrough_data->enc_frame_whole = pLayerBsInfo->pBsBuf;
-//    strm->enc_processed = 0;
-//
-//    status = pjmedia_h264_packetize(strm->pktz,
-//                    strm->enc_frame_whole,
-//                    strm->enc_frame_size,
-//                    &strm->enc_processed,
-//                    &payload, &payload_len);
-//    if (status != PJ_SUCCESS) {
-//        /* Reset */
-//        strm->enc_frame_size = strm->enc_processed = 0;
-//        // *has_more = (strm->ilayer < strm->iLayerNum);
-//
-//        PJ_PERROR(3,(THIS_FILE, status, "pjmedia_h264_packetize() error [2]"));
-//        return status;
-//    }
-//
-//    PJ_ASSERT_RETURN(payload_len <= out_size, PJMEDIA_CODEC_EFRMTOOSHORT);
-//
-//    output->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//    pj_memcpy(output->buf, payload, payload_len);
-//    output->size = payload_len;
-//
-//
-//    *has_more = (strm->enc_processed < strm->enc_frame_size); // ||
-//            // (strm->ilayer < strm->iLayerNum);
-//    // if (*has_more == PJ_TRUE) {
-//    //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_TRUE", __FUNCTION__));
-//    // } else {
-//    //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_FALSE", __FUNCTION__));
-//    // }
-//    return PJ_SUCCESS;
-//}
-//
-//static int encode_begin(pjmedia_vid_stream *stream, const pjmedia_vid_encode_opt *opt,
-//    const pjmedia_frame *input, unsigned out_size, pjmedia_frame *output, pj_bool_t *has_more) {
-//
-//    // PJ_LOG(3, (THIS_FILE, "encode_begin"));
-//
-//    PJ_ASSERT_RETURN(stream && input && out_size && output && has_more,
-//                     PJ_EINVAL);
-//
-//    // const pjmedia_frame *input_ = (const pjmedia_frame*) input;
-//    pjmedia_vid_stream* strm = (pjmedia_vid_stream *) stream;
-//
-//    strm->enc_buf_size = input->size;
-//    strm->enc_buf = pj_pool_alloc(strm->cv_pool, strm->enc_buf_size);
-//    strm->enc_frame_size = strm->enc_processed = 0;
-//
-//
-//
-//    // h264_passthrough_data->enc_buf = input->buf;
-//    pj_memcpy(strm->enc_buf , input->buf, strm->enc_buf_size);
-//
-//    return encode_more(strm, out_size, output, has_more);
-//
-//}
-//
-//static int encode_more1(pjmedia_vid_stream *stream, unsigned out_size, pjmedia_frame *output, pj_bool_t *has_more) {
-//    PJ_LOG(4,(THIS_FILE, "encode_more"));
-//    const pj_uint8_t *payload;
-//    pj_size_t payload_len;
-//    pj_status_t status;
-//    // PJ_LOG(3, (THIS_FILE, "encode_more"));
-//    PJ_ASSERT_RETURN(stream && out_size && output && has_more, PJ_EINVAL);
-//    pjmedia_vid_stream* strm = (pjmedia_vid_stream *) stream;
-//    if (strm->enc_processed < strm->enc_frame_size) {
-//         PJ_LOG(4, (THIS_FILE, "%s: h264_passthrough_data->enc_processed < h264_passthrough_data->enc_frame_size", __FUNCTION__));
-//        /* We have outstanding frame in packetizer */
-//        status = pjmedia_h264_packetize(strm->pktz,
-//                                        strm->enc_frame_whole,
-//                                        strm->enc_frame_size,
-//                                        &strm->enc_processed,
-//                                        &payload, &payload_len);
-//        if (status != PJ_SUCCESS) {
-//            /* Reset */
-//            strm->enc_frame_size = strm->enc_processed = 0;
-//            *has_more = (strm->enc_processed <
-//                    strm->enc_frame_size);
-//            // *has_more = (strm->enc_processed <
-//            //         strm->enc_frame_size) ||
-//            //     (strm->ilayer < strm->iLayerNum);
-//            PJ_PERROR(3,(THIS_FILE, status, "pjmedia_h264_packetize() error"));
-//            return status;
-//        }
-//        PJ_ASSERT_RETURN(payload_len <= out_size, PJMEDIA_CODEC_EFRMTOOSHORT);
-//        output->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//        pj_memcpy(output->buf, payload, payload_len);
-//        output->size = payload_len;
-//        // if (h264_passthrough_data->bsi.eFrameType == videoFrameTypeIDR) {
-//        //    output->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-//        // }
-//        // if (strm->isIDR == PJ_TRUE) {
-//        //     // PJ_LOG(4, (THIS_FILE, "%s: This is keyframe", __FUNCTION__));
-//        //     output->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-//        //     strm->isIDR = PJ_FALSE;
-//        // } else {
-//        //     // PJ_LOG(4, (THIS_FILE, "%s: This is not keyframe", __FUNCTION__));
-//        // }
-//        // PJ_LOG(4, (THIS_FILE, "%s: strm->enc_processed   = %u of %u", __FUNCTION__, strm->enc_processed, strm->enc_frame_size));
-//        // strm->ilayer++;
-//        *has_more = (strm->enc_processed < strm->enc_frame_size);
-//        // *has_more = (strm->enc_processed < strm->enc_frame_size) ||
-//        //         (strm->ilayer < strm->iLayerNum);
-//        // if (*has_more == PJ_TRUE) {
-//        //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_TRUE", __FUNCTION__));
-//        // } else {
-//        //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_FALSE", __FUNCTION__));
-//        // }
-//        return PJ_SUCCESS;
-//    }
-//    
-//    PJ_LOG(4, (THIS_FILE, "%s: h264_passthrough_data->enc_processed > h264_passthrough_data->enc_frame_size", __FUNCTION__));
-//    
-//    strm->enc_frame_size = strm->enc_buf_size;
-//    strm->enc_frame_whole = strm->enc_buf;
-//    // h264_passthrough_data->enc_frame_whole = pLayerBsInfo->pBsBuf;
-//    strm->enc_processed = 0;
-//    status = pjmedia_h264_packetize(strm->pktz,
-//                    strm->enc_frame_whole,
-//                    strm->enc_frame_size,
-//                    &strm->enc_processed,
-//                    &payload, &payload_len);
-//    if (status != PJ_SUCCESS) {
-//        /* Reset */
-//        strm->enc_frame_size = strm->enc_processed = 0;
-//        // *has_more = (strm->ilayer < strm->iLayerNum);
-//        PJ_PERROR(3,(THIS_FILE, status, "pjmedia_h264_packetize() error [2]"));
-//        return status;
-//    }
-//    PJ_ASSERT_RETURN(payload_len <= out_size, PJMEDIA_CODEC_EFRMTOOSHORT);
-//    MY_DBG();
-//    output->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//    pj_memcpy(output->buf, payload, payload_len);
-//    output->size = payload_len;
-//    *has_more = (strm->enc_processed < strm->enc_frame_size); // ||
-//            // (strm->ilayer < strm->iLayerNum);
-//    // if (*has_more == PJ_TRUE) {
-//    //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_TRUE", __FUNCTION__));
-//    // } else {
-//    //     // PJ_LOG(3, (THIS_FILE, "%s: has more frame == PJ_FALSE", __FUNCTION__));
-//    // }
-//    return PJ_SUCCESS;
-//}
-//
-//static int encode_begin2(pjmedia_vid_stream *stream, const pjmedia_vid_encode_opt *opt,
-//    const pjmedia_frame *input, unsigned out_size, pjmedia_frame *output, pj_bool_t *has_more) {
-//    PJ_LOG(4,(THIS_FILE, "encode_begin"));
-//    // PJ_LOG(3, (THIS_FILE, "encode_begin"));
-//    PJ_ASSERT_RETURN(stream && input && out_size && output && has_more,
-//                     PJ_EINVAL);
-//    // const pjmedia_frame *input_ = (const pjmedia_frame*) input;
-//    pjmedia_vid_stream* strm = (pjmedia_vid_stream *) stream;
-//    strm->enc_buf_size = input->size;
-////    strm->enc_buf = pj_pool_alloc(strm->cv_pool, strm->enc_buf_size);
-//    strm->enc_buf = pj_pool_calloc(strm->cv_pool, strm->enc_buf_size, sizeof(unsigned char));
-////    strm->enc_buf = pj_pool_calloc(strm->cv_pool, strm->enc_buf_size, sizeof(unsigned));
-//    strm->enc_frame_size = strm->enc_processed = 0;
-//    MY_DBG();
-//    // h264_passthrough_data->enc_buf = input->buf;
-//    PJ_LOG(4, (THIS_FILE, "%s: input->size %d", __FUNCTION__, input->size));
-//    pj_memcpy(strm->enc_buf , input->buf, strm->enc_buf_size);
-//    MY_DBG();
-//    return encode_more(strm, out_size, output, has_more);
-//}
-//
-///* Prototypes */
-//static pj_status_t decode_frame(pjmedia_vid_stream *stream,
-//                                pjmedia_frame *frame);
-//
-//
-//static pj_status_t send_rtcp(pjmedia_vid_stream *stream,
-//			     pj_bool_t with_sdes,
-//			     pj_bool_t with_bye);
-//
-//static void on_rx_rtcp( void *data,
-//                        void *pkt,
-//                        pj_ssize_t bytes_read);
-//
-//#if TRACE_JB
-//
-//PJ_INLINE(int) trace_jb_print_timestamp(char **buf, pj_ssize_t len)
-//{
-//    pj_time_val now;
-//    pj_parsed_time ptime;
-//    char *p = *buf;
-//
-//    if (len < 14)
-//	return -1;
-//
-//    pj_gettimeofday(&now);
-//    pj_time_decode(&now, &ptime);
-//    p += pj_utoa_pad(ptime.hour, p, 2, '0');
-//    *p++ = ':';
-//    p += pj_utoa_pad(ptime.min, p, 2, '0');
-//    *p++ = ':';
-//    p += pj_utoa_pad(ptime.sec, p, 2, '0');
-//    *p++ = '.';
-//    p += pj_utoa_pad(ptime.msec, p, 3, '0');
-//    *p++ = ',';
-//
-//    *buf = p;
-//
-//    return 0;
-//}
-//
-//PJ_INLINE(int) trace_jb_print_state(pjmedia_vid_stream *stream,
-//				    char **buf, pj_ssize_t len)
-//{
-//    char *p = *buf;
-//    char *endp = *buf + len;
-//    pjmedia_jb_state state;
-//
-//    pjmedia_jbuf_get_state(stream->jb, &state);
-//
-//    len = pj_ansi_snprintf(p, endp-p, "%d, %d, %d",
-//			   state.size, state.burst, state.prefetch);
-//    if ((len < 0) || (len >= endp-p))
-//	return -1;
-//
-//    p += len;
-//    *buf = p;
-//    return 0;
-//}
-//
-//static void trace_jb_get(pjmedia_vid_stream *stream, pjmedia_jb_frame_type ft,
-//			 pj_size_t fsize)
-//{
-//    char *p = stream->trace_jb_buf;
-//    char *endp = stream->trace_jb_buf + PJ_LOG_MAX_SIZE;
-//    pj_ssize_t len = 0;
-//    const char* ft_st;
-//
-//    if (!TRACE_JB_OPENED(stream))
-//	return;
-//
-//    /* Print timestamp. */
-//    if (trace_jb_print_timestamp(&p, endp-p))
-//	goto on_insuff_buffer;
-//
-//    /* Print frame type and size */
-//    switch(ft) {
-//	case PJMEDIA_JB_MISSING_FRAME:
-//	    ft_st = "missing";
-//	    break;
-//	case PJMEDIA_JB_NORMAL_FRAME:
-//	    ft_st = "normal";
-//	    break;
-//	case PJMEDIA_JB_ZERO_PREFETCH_FRAME:
-//	    ft_st = "prefetch";
-//	    break;
-//	case PJMEDIA_JB_ZERO_EMPTY_FRAME:
-//	    ft_st = "empty";
-//	    break;
-//	default:
-//	    ft_st = "unknown";
-//	    break;
-//    }
-//
-//    /* Print operation, size, frame count, frame type */
-//    len = pj_ansi_snprintf(p, endp-p, "GET,%d,1,%s,,,,", fsize, ft_st);
-//    if ((len < 0) || (len >= endp-p))
-//	goto on_insuff_buffer;
-//    p += len;
-//
-//    /* Print JB state */
-//    if (trace_jb_print_state(stream, &p, endp-p))
-//	goto on_insuff_buffer;
-//
-//    /* Print end of line */
-//    if (endp-p < 2)
-//	goto on_insuff_buffer;
-//    *p++ = '\n';
-//
-//    /* Write and flush */
-//    len = p - stream->trace_jb_buf;
-//    pj_file_write(stream->trace_jb_fd, stream->trace_jb_buf, &len);
-//    pj_file_flush(stream->trace_jb_fd);
-//    return;
-//
-//on_insuff_buffer:
-//    pj_assert(!"Trace buffer too small, check PJ_LOG_MAX_SIZE!");
-//}
-//
-//static void trace_jb_put(pjmedia_vid_stream *stream,
-//			 const pjmedia_rtp_hdr *hdr,
-//			 unsigned payloadlen, unsigned frame_cnt)
-//{
-//    char *p = stream->trace_jb_buf;
-//    char *endp = stream->trace_jb_buf + PJ_LOG_MAX_SIZE;
-//    pj_ssize_t len = 0;
-//
-//    if (!TRACE_JB_OPENED(stream))
-//	return;
-//
-//    /* Print timestamp. */
-//    if (trace_jb_print_timestamp(&p, endp-p))
-//	goto on_insuff_buffer;
-//
-//    /* Print operation, size, frame count, RTP info */
-//    len = pj_ansi_snprintf(p, endp-p,
-//			   "PUT,%d,%d,,%d,%d,%d,",
-//			   payloadlen, frame_cnt,
-//			   pj_ntohs(hdr->seq), pj_ntohl(hdr->ts), hdr->m);
-//    if ((len < 0) || (len >= endp-p))
-//	goto on_insuff_buffer;
-//    p += len;
-//
-//    /* Print JB state */
-//    if (trace_jb_print_state(stream, &p, endp-p))
-//	goto on_insuff_buffer;
-//
-//    /* Print end of line */
-//    if (endp-p < 2)
-//	goto on_insuff_buffer;
-//    *p++ = '\n';
-//
-//    /* Write and flush */
-//    len = p - stream->trace_jb_buf;
-//    pj_file_write(stream->trace_jb_fd, stream->trace_jb_buf, &len);
-//    pj_file_flush(stream->trace_jb_fd);
-//    return;
-//
-//on_insuff_buffer:
-//    pj_assert(!"Trace buffer too small, check PJ_LOG_MAX_SIZE!");
-//}
-//
-//#endif /* TRACE_JB */
-//
-//static void dump_port_info(const pjmedia_vid_channel *chan,
-//                           const char *event_name)
-//{
-//    PJ_LOG(4,(THIS_FILE, "dump_port_info"));
-//    const pjmedia_port_info *pi = &chan->port.info;
-//    char fourcc_name[5];
-//
-//    PJ_LOG(5, (pi->name.ptr,
-//	       " %s format %s: %dx%d %s%s %d/%d(~%d)fps",
-//	       (chan->dir==PJMEDIA_DIR_DECODING? "Decoding":"Encoding"),
-//	       event_name,
-//	       pi->fmt.det.vid.size.w, pi->fmt.det.vid.size.h,
-//	       pjmedia_fourcc_name(pi->fmt.id, fourcc_name),
-//	       (chan->dir==PJMEDIA_DIR_ENCODING?"->":"<-"),
-//	       pi->fmt.det.vid.fps.num, pi->fmt.det.vid.fps.denum,
-//	       pi->fmt.det.vid.fps.num/pi->fmt.det.vid.fps.denum));
-//}
-//
-///*
-// * Handle events from stream components.
-// */
-//static pj_status_t stream_event_cb(pjmedia_event *event,
-//                                   void *user_data)
-//{
-//    PJ_LOG(3, (THIS_FILE, "stream_event_cb"));
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*)user_data;
-//
-//    if (event->epub == stream->codec) {
-//	/* This is codec event */
-//	switch (event->type) {
-//	case PJMEDIA_EVENT_FMT_CHANGED:
-//	    /* Copy the event to avoid deadlock if we publish the event
-//	     * now. This happens because fmt_event may trigger restart
-//	     * while we're still holding the jb_mutex.
-//	     */
-//	    pj_memcpy(&stream->fmt_event, event, sizeof(*event));
-//	    return PJ_SUCCESS;
-//
-//	case PJMEDIA_EVENT_KEYFRAME_MISSING:
-//	    /* Republish this event later from get_frame(). */
-//	    pj_memcpy(&stream->miss_keyframe_event, event, sizeof(*event));
-//	    return PJ_SUCCESS;
-//
-//	default:
-//	    break;
-//	}
-//    }
-//
-//    return pjmedia_event_publish(NULL, stream, event, 0);
-//}
-//
-///**
-// * Publish transport error event.
-// */
-//static void publish_tp_event(pjmedia_event_type event_type,
-//			     pj_status_t status,
-//			     pj_bool_t is_rtp,
-//			     pjmedia_dir dir,
-//			     pjmedia_vid_stream *stream)
-//{
-//    PJ_LOG(3, (THIS_FILE, "publish_tp_event"));
-//    pjmedia_event ev;
-//    pj_timestamp ts_now;
-//
-//    pj_get_timestamp(&ts_now);
-//    pj_bzero(&ev.data.med_tp_err, sizeof(ev.data.med_tp_err));
-//
-//    /* Publish event. */
-//    pjmedia_event_init(&ev, event_type,
-//		       &ts_now, stream);
-//    ev.data.med_tp_err.type = PJMEDIA_TYPE_VIDEO;
-//    ev.data.med_tp_err.is_rtp = is_rtp;
-//    ev.data.med_tp_err.dir = dir;
-//    ev.data.med_tp_err.status = status;
-//
-//    pjmedia_event_publish(NULL, stream, &ev, 0);
-//}
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA != 0
-///*
-// * Send keep-alive packet using non-codec frame.
-// */
-//static void send_keep_alive_packet(pjmedia_vid_stream *stream)
-//{
-//#if PJMEDIA_STREAM_ENABLE_KA == PJMEDIA_STREAM_KA_EMPTY_RTP
-//
-//    /* Keep-alive packet is empty RTP */
-//    pjmedia_vid_channel *channel = stream->enc;
-//    pj_status_t status;
-//    void *pkt;
-//    int pkt_len;
-//
-//    TRC_((channel->port.info.name.ptr,
-//	  "Sending keep-alive (RTCP and empty RTP)"));
-//
-//    /* Send RTP */
-//    status = pjmedia_rtp_encode_rtp( &stream->enc->rtp,
-//				     stream->enc->pt, 0,
-//				     1,
-//				     0,
-//				     (const void**)&pkt,
-//				     &pkt_len);
-//    pj_assert(status == PJ_SUCCESS);
-//
-//    pj_memcpy(stream->enc->buf, pkt, pkt_len);
-//    pjmedia_transport_send_rtp(stream->transport, stream->enc->buf,
-//			       pkt_len);
-//
-//    /* Send RTCP */
-//    send_rtcp(stream, PJ_TRUE, PJ_FALSE);
-//
-//    /* Update stats in case the stream is paused */
-//    stream->rtcp.stat.rtp_tx_last_seq = pj_ntohs(stream->enc->rtp.out_hdr.seq);
-//
-//#elif PJMEDIA_STREAM_ENABLE_KA == PJMEDIA_STREAM_KA_USER
-//
-//    /* Keep-alive packet is defined in PJMEDIA_STREAM_KA_USER_PKT */
-//    pjmedia_vid_channel *channel = stream->enc;
-//    int pkt_len;
-//    const pj_str_t str_ka = PJMEDIA_STREAM_KA_USER_PKT;
-//
-//    TRC_((channel->port.info.name.ptr,
-//	  "Sending keep-alive (custom RTP/RTCP packets)"));
-//
-//    /* Send to RTP port */
-//    pj_memcpy(stream->enc->buf, str_ka.ptr, str_ka.slen);
-//    pkt_len = str_ka.slen;
-//    pjmedia_transport_send_rtp(stream->transport, stream->enc->buf,
-//			       pkt_len);
-//
-//    /* Send to RTCP port */
-//    pjmedia_transport_send_rtcp(stream->transport, stream->enc->buf,
-//			        pkt_len);
-//
-//#else
-//
-//    PJ_UNUSED_ARG(stream);
-//
-//#endif
-//}
-//#endif	/* defined(PJMEDIA_STREAM_ENABLE_KA) */
-//
-//
-//static pj_status_t send_rtcp(pjmedia_vid_stream *stream,
-//			     pj_bool_t with_sdes,
-//			     pj_bool_t with_bye)
-//{
-//    PJ_LOG(3, (THIS_FILE, "send_rtcp"));
-//    void *sr_rr_pkt;
-//    pj_uint8_t *pkt;
-//    int len, max_len;
-//    pj_status_t status;
-//    pjmedia_vid_channel *channel = stream->enc;
-//
-//    /* Build RTCP RR/SR packet */
-//    pjmedia_rtcp_build_rtcp(&stream->rtcp, &sr_rr_pkt, &len);
-//
-//    if (with_sdes || with_bye) {
-//	pkt = (pj_uint8_t*) stream->out_rtcp_pkt;
-//	pj_memcpy(pkt, sr_rr_pkt, len);
-//	max_len = stream->out_rtcp_pkt_size;
-//    } else {
-//	pkt = (pj_uint8_t*)sr_rr_pkt;
-//	max_len = len;
-//    }
-//
-//    /* Build RTCP SDES packet */
-//    if (with_sdes) {
-//	pjmedia_rtcp_sdes sdes;
-//	pj_size_t sdes_len;
-//
-//	pj_bzero(&sdes, sizeof(sdes));
-//	sdes.cname = stream->cname;
-//	sdes_len = max_len - len;
-//	status = pjmedia_rtcp_build_rtcp_sdes(&stream->rtcp, pkt+len,
-//					      &sdes_len, &sdes);
-//	if (status != PJ_SUCCESS) {
-//	    PJ_PERROR(4,(stream->name.ptr, status,
-//        			     "Error generating RTCP SDES"));
-//	} else {
-//	    len += (int)sdes_len;
-//	}
-//    }
-//
-//    /* Build RTCP BYE packet */
-//    if (with_bye) {
-//	pj_size_t bye_len;
-//
-//	bye_len = max_len - len;
-//	status = pjmedia_rtcp_build_rtcp_bye(&stream->rtcp, pkt+len,
-//					     &bye_len, NULL);
-//	if (status != PJ_SUCCESS) {
-//	    PJ_PERROR(4,(stream->name.ptr, status,
-//        			     "Error generating RTCP BYE"));
-//	} else {
-//	    len += (int)bye_len;
-//	}
-//    }
-//
-//    /* Send! */
-//    status = pjmedia_transport_send_rtcp(stream->transport, pkt, len);
-//    if (status != PJ_SUCCESS) {
-//	if (stream->rtcp_tx_err_cnt++ == 0) {
-//	    LOGERR_((channel->port.info.name.ptr, status,
-//		     "Error sending RTCP"));
-//	}
-//	if (stream->rtcp_tx_err_cnt > SEND_ERR_COUNT_TO_REPORT) {
-//	    stream->rtcp_tx_err_cnt = 0;
-//	}
-//    }
-//    return status;
-//}
-//
-//
-///**
-// * check_tx_rtcp()
-// *
-// * This function is can be called by either put_frame() or get_frame(),
-// * to transmit periodic RTCP SR/RR report.
-// */
-//static void check_tx_rtcp(pjmedia_vid_stream *stream, pj_uint32_t timestamp)
-//{
-//    /* Note that timestamp may represent local or remote timestamp,
-//     * depending on whether this function is called from put_frame()
-//     * or get_frame().
-//     */
-//
-//
-//    if (stream->rtcp_last_tx == 0) {
-//
-//	stream->rtcp_last_tx = timestamp;
-//
-//    } else if (timestamp - stream->rtcp_last_tx >= stream->rtcp_interval) {
-//	pj_status_t status;
-//
-//	status = send_rtcp(stream, !stream->rtcp_sdes_bye_disabled, PJ_FALSE);
-//	if (status != PJ_SUCCESS) {
-//	    PJ_PERROR(4,(stream->name.ptr, status,
-//        		 "Error sending RTCP"));
-//	}
-//
-//	stream->rtcp_last_tx = timestamp;
-//    }
-//}
-//
-//
-//#if 0
-//static void dump_bin(const char *buf, unsigned len)
-//{
-//    unsigned i;
-//
-//    PJ_LOG(3,(THIS_FILE, "begin dump"));
-//    for (i=0; i<len; ++i) {
-//	int j;
-//	char bits[9];
-//	unsigned val = buf[i] & 0xFF;
-//
-//	bits[8] = '\0';
-//	for (j=0; j<8; ++j) {
-//	    if (val & (1 << (7-j)))
-//		bits[j] = '1';
-//	    else
-//		bits[j] = '0';
-//	}
-//
-//	PJ_LOG(3,(THIS_FILE, "%2d %s [%d]", i, bits, val));
-//    }
-//    PJ_LOG(3,(THIS_FILE, "end dump"));
-//}
-//#endif
-//
-//
-///*
-// * This callback is called by stream transport on receipt of packets
-// * in the RTP socket.
-// */
-//static void on_rx_rtp( pjmedia_tp_cb_param *param)
-//{
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*) param->user_data;
-//    void *pkt = param->pkt;
-//    pj_ssize_t bytes_read = param->size;
-//    pjmedia_vid_channel *channel = stream->dec;
-//    const pjmedia_rtp_hdr *hdr;
-//    const void *payload;
-//    unsigned payloadlen;
-//    pjmedia_rtp_status seq_st;
-//    pj_status_t status;
-//    pj_bool_t pkt_discarded = PJ_FALSE;
-//
-//    /* Check for errors */
-//    if (bytes_read < 0) {
-//	status = (pj_status_t)-bytes_read;
-//	if (status == PJ_STATUS_FROM_OS(OSERR_EWOULDBLOCK)) {
-//	    return;
-//	}
-//
-//	LOGERR_((channel->port.info.name.ptr, status,
-//		 "Unable to receive RTP packet"));
-//
-//	if (status == PJ_ESOCKETSTOP) {
-//	    /* Publish receive error event. */
-//	    publish_tp_event(PJMEDIA_EVENT_MEDIA_TP_ERR, status, PJ_TRUE,
-//			     PJMEDIA_DIR_DECODING, stream);
-//	}
-//	return;
-//    }
-//
-//    /* Ignore keep-alive packets */
-//    if (bytes_read < (pj_ssize_t) sizeof(pjmedia_rtp_hdr))
-//	return;
-//
-//    /* Update RTP and RTCP session. */
-//    status = pjmedia_rtp_decode_rtp(&channel->rtp, pkt, (int)bytes_read,
-//				    &hdr, &payload, &payloadlen);
-//    if (status != PJ_SUCCESS) {
-//	LOGERR_((channel->port.info.name.ptr, status, "RTP decode error"));
-//	stream->rtcp.stat.rx.discard++;
-//	return;
-//    }
-//
-//    /* Check if multiplexing is allowed and the payload indicates RTCP. */
-//    if (stream->info.rtcp_mux && hdr->pt >= 64 && hdr->pt <= 95) {
-//    	on_rx_rtcp(stream, pkt, bytes_read);
-//    	return;
-//    }
-//
-//    /* Ignore the packet if decoder is paused */
-//    if (channel->paused)
-//	goto on_return;
-//
-//    /* Update RTP session (also checks if RTP session can accept
-//     * the incoming packet.
-//     */
-//    pjmedia_rtp_session_update2(&channel->rtp, hdr, &seq_st, PJ_TRUE);
-//    if (seq_st.status.value) {
-//	TRC_  ((channel->port.info.name.ptr,
-//		"RTP status: badpt=%d, badssrc=%d, dup=%d, "
-//		"outorder=%d, probation=%d, restart=%d",
-//		seq_st.status.flag.badpt,
-//		seq_st.status.flag.badssrc,
-//		seq_st.status.flag.dup,
-//		seq_st.status.flag.outorder,
-//		seq_st.status.flag.probation,
-//		seq_st.status.flag.restart));
-//
-//	if (seq_st.status.flag.badpt) {
-//	    PJ_LOG(4,(channel->port.info.name.ptr,
-//		      "Bad RTP pt %d (expecting %d)",
-//		      hdr->pt, channel->rtp.out_pt));
-//	}
-//
-//	if (!stream->info.has_rem_ssrc && seq_st.status.flag.badssrc) {
-//	    PJ_LOG(4,(channel->port.info.name.ptr,
-//		      "Changed RTP peer SSRC %d (previously %d)",
-//		      channel->rtp.peer_ssrc, stream->rtcp.peer_ssrc));
-//	    stream->rtcp.peer_ssrc = channel->rtp.peer_ssrc;
-//	}
-//
-//
-//    }
-//
-//    /* Skip bad RTP packet */
-//    if (seq_st.status.flag.bad) {
-//	pkt_discarded = PJ_TRUE;
-//	goto on_return;
-//    }
-//
-//    /* Ignore if payloadlen is zero */
-//    if (payloadlen == 0) {
-//	pkt_discarded = PJ_TRUE;
-//	goto on_return;
-//    }
-//
-//    /* See if source address of RTP packet is different than the
-//     * configured address, and check if we need to tell the
-//     * media transport to switch RTP remote address.
-//     */
-//    if (param->src_addr) {
-//        pj_bool_t badssrc = (stream->info.has_rem_ssrc &&
-//        		     seq_st.status.flag.badssrc);
-//
-//	if (pj_sockaddr_cmp(&stream->rem_rtp_addr, param->src_addr) == 0) {
-//	    /* We're still receiving from rem_rtp_addr. */
-//	    stream->rtp_src_cnt = 0;
-//	    stream->rem_rtp_flag = badssrc? 2: 1;
-//	} else {
-//	    stream->rtp_src_cnt++;
-//
-//	    if (stream->rtp_src_cnt < PJMEDIA_RTP_NAT_PROBATION_CNT) {
-//	    	if (stream->rem_rtp_flag == 1 ||
-//	    	    (stream->rem_rtp_flag == 2 && badssrc))
-//	    	{
-//		    /* Only discard if:
-//		     * - we have ever received packet with good ssrc from
-//		     *   remote address (rem_rtp_addr), or
-//		     * - we have ever received packet with bad ssrc from
-//		     *   remote address and this packet also has bad ssrc.
-//		     */
-//	    	    pkt_discarded = PJ_TRUE;
-//	    	    goto on_return;
-//	    	}
-//	    	if (stream->info.has_rem_ssrc && !seq_st.status.flag.badssrc
-//	    	    && stream->rem_rtp_flag != 1)
-//	    	{
-//	    	    /* Immediately switch if we receive packet with the
-//	    	     * correct ssrc AND we never receive packets with
-//	    	     * good ssrc from rem_rtp_addr.
-//	    	     */
-//	    	    param->rem_switch = PJ_TRUE;
-//	    	}
-//	    } else {
-//	        /* Switch. We no longer receive packets from rem_rtp_addr. */
-//	        param->rem_switch = PJ_TRUE;
-//	    }
-//
-//	    if (param->rem_switch) {
-//		/* Set remote RTP address to source address */
-//		pj_sockaddr_cp(&stream->rem_rtp_addr, param->src_addr);
-//
-//		/* Reset counter and flag */
-//		stream->rtp_src_cnt = 0;
-//		stream->rem_rtp_flag = badssrc? 2: 1;
-//
-//		/* Update RTCP peer ssrc */
-//	    	stream->rtcp.peer_ssrc = pj_ntohl(hdr->ssrc);
-//	    }
-//	}
-//    }
-//
-//    pj_mutex_lock( stream->jb_mutex );
-//
-//    /* Quickly see if there may be a full picture in the jitter buffer, and
-//     * decode them if so. More thorough check will be done in decode_frame().
-//     */
-//    if ((pj_ntohl(hdr->ts) != stream->dec_frame.timestamp.u32.lo) || hdr->m) {
-//	if (PJMEDIA_VID_STREAM_SKIP_PACKETS_TO_REDUCE_LATENCY) {
-//	    /* Always decode whenever we have picture in jb and
-//	     * overwrite already decoded picture if necessary
-//	     */
-//	    pj_size_t old_size = stream->dec_frame.size;
-//
-//	    stream->dec_frame.size = stream->dec_max_size;
-//	    if (decode_frame(stream, &stream->dec_frame) != PJ_SUCCESS) {
-//		stream->dec_frame.size = old_size;
-//	    }
-//	} else {
-//	    /* Only decode if we don't already have decoded one,
-//	     * unless the jb is full.
-//	     */
-//	    pj_bool_t can_decode = PJ_FALSE;
-//
-//	    if (pjmedia_jbuf_is_full(stream->jb)) {
-//		can_decode = PJ_TRUE;
-//	    }
-//	    else if (stream->dec_frame.size == 0) {
-//		can_decode = PJ_TRUE;
-//	    }
-//
-//	    if (can_decode) {
-//		stream->dec_frame.size = stream->dec_max_size;
-//		if (decode_frame(stream, &stream->dec_frame) != PJ_SUCCESS) {
-//		    stream->dec_frame.size = 0;
-//		}
-//	    }
-//	}
-//    }
-//
-//    /* Put "good" packet to jitter buffer, or reset the jitter buffer
-//     * when RTP session is restarted.
-//     */
-//    if (seq_st.status.flag.restart) {
-//	status = pjmedia_jbuf_reset(stream->jb);
-//	PJ_LOG(4,(channel->port.info.name.ptr, "Jitter buffer reset"));
-//    } else {
-//	/* Just put the payload into jitter buffer */
-//	pjmedia_jbuf_put_frame3(stream->jb, payload, payloadlen, 0,
-//				pj_ntohs(hdr->seq), pj_ntohl(hdr->ts), NULL);
-//
-//#if TRACE_JB
-//	trace_jb_put(stream, hdr, payloadlen, count);
-//#endif
-//
-//    }
-//    pj_mutex_unlock( stream->jb_mutex );
-//
-//
-//    /* Check if now is the time to transmit RTCP SR/RR report.
-//     * We only do this when stream direction is "decoding only" or
-//     * if the encoder is paused,
-//     * because otherwise check_tx_rtcp() will be handled by put_frame()
-//     */
-//    if (stream->dir == PJMEDIA_DIR_DECODING || stream->enc->paused) {
-//	check_tx_rtcp(stream, pj_ntohl(hdr->ts));
-//    }
-//
-//    if (status != 0) {
-//	LOGERR_((channel->port.info.name.ptr, status,
-//		 "Jitter buffer put() error"));
-//	pkt_discarded = PJ_TRUE;
-//	goto on_return;
-//    }
-//
-//on_return:
-//    /* Update RTCP session */
-//    if (stream->rtcp.peer_ssrc == 0)
-//	stream->rtcp.peer_ssrc = channel->rtp.peer_ssrc;
-//
-//    pjmedia_rtcp_rx_rtp2(&stream->rtcp, pj_ntohs(hdr->seq),
-//			 pj_ntohl(hdr->ts), payloadlen, pkt_discarded);
-//
-//    /* Send RTCP RR and SDES after we receive some RTP packets */
-//    if (stream->rtcp.received >= 10 && !stream->initial_rr) {
-//	status = send_rtcp(stream, !stream->rtcp_sdes_bye_disabled,
-//			   PJ_FALSE);
-//        if (status != PJ_SUCCESS) {
-//            PJ_PERROR(4,(stream->name.ptr, status,
-//            	     "Error sending initial RTCP RR"));
-//	} else {
-//	    stream->initial_rr = PJ_TRUE;
-//	}
-//    }
-//}
-//
-//
-///*
-// * This callback is called by stream transport on receipt of packets
-// * in the RTCP socket.
-// */
-//static void on_rx_rtcp( void *data,
-//                        void *pkt,
-//                        pj_ssize_t bytes_read)
-//{
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*) data;
-//    pj_status_t status;
-//
-//    /* Check for errors */
-//    if (bytes_read < 0) {
-//	status = (pj_status_t)-bytes_read;
-//	if (status == PJ_STATUS_FROM_OS(OSERR_EWOULDBLOCK)) {
-//	    return;
-//	}
-//	LOGERR_((stream->cname.ptr, status, "Unable to receive RTCP packet"));
-//	if (status == PJ_ESOCKETSTOP) {
-//	    /* Publish receive error event. */
-//	    publish_tp_event(PJMEDIA_EVENT_MEDIA_TP_ERR, status, PJ_FALSE,
-//			     PJMEDIA_DIR_DECODING, stream);
-//	}
-//	return;
-//    }
-//
-//    pjmedia_rtcp_rx_rtcp(&stream->rtcp, pkt, bytes_read);
-//}
-//
-//static pj_status_t put_frame(pjmedia_port *port,
-//                             pjmedia_frame *frame)
-//{
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*) port->port_data.pdata;
-//    pjmedia_vid_channel *channel = stream->enc;
-//    pj_status_t status = 0;
-//    pjmedia_frame frame_out;
-//    unsigned rtp_ts_len;
-//    void *rtphdr;
-//    int rtphdrlen;
-//    pj_size_t total_sent = 0;
-//    pjmedia_vid_encode_opt enc_opt;
-//    unsigned pkt_cnt = 0;
-//    pj_timestamp initial_time;
-//    pj_timestamp null_ts ={{0}};
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA != 0
-//    /* If the interval since last sending packet is greater than
-//     * PJMEDIA_STREAM_KA_INTERVAL, send keep-alive packet.
-//     */
-//    if (stream->use_ka)
-//    {
-//        pj_uint32_t dtx_duration;
-//
-//        dtx_duration = pj_timestamp_diff32(&stream->last_frm_ts_sent,
-//                           &frame->timestamp);
-//            /* Video stream keep-alive feature is currently disabled. */
-//            /*
-//            if (dtx_duration >
-//            PJMEDIA_STREAM_KA_INTERVAL *
-//                PJMEDIA_PIA_SRATE(&channel->port.info))
-//        {
-//            send_keep_alive_packet(stream);
-//            stream->last_frm_ts_sent = frame->timestamp;
-//        }
-//            */
-//    }
-//#endif
-//
-//    /* Don't do anything if stream is paused */
-//    if (channel->paused) {
-//        return PJ_SUCCESS;
-//    }
-//
-//    /* Get frame length in timestamp unit */
-//    rtp_ts_len = stream->frame_ts_len;
-//
-//    /* Empty video frame? Just update RTP timestamp for now */
-//    if (frame->type==PJMEDIA_FRAME_TYPE_VIDEO && frame->size==0) {
-//    pjmedia_rtp_encode_rtp(&channel->rtp, channel->pt, 1, 0,
-//                   rtp_ts_len,  (const void**)&rtphdr,
-//                   &rtphdrlen);
-//    return PJ_SUCCESS;
-//    }
-//
-//    /* Init frame_out buffer. */
-//    pj_bzero(&frame_out, sizeof(frame_out));
-//    frame_out.buf = ((char*)channel->buf) + sizeof(pjmedia_rtp_hdr);
-//    frame_out.size = 0;
-//
-//    /* Check if need to send keyframe. */
-//    if (stream->num_keyframe && (pj_cmp_timestamp(&null_ts, &stream->last_keyframe_tx) != 0))
-//    {
-//     unsigned elapse_time;
-//     pj_timestamp now;
-//
-//     pj_get_timestamp(&now);
-//
-//     elapse_time = pj_elapsed_msec(&stream->last_keyframe_tx, &now);
-//
-//     if (elapse_time > stream->info.sk_cfg.interval)
-//     {
-//         stream->force_keyframe = PJ_TRUE;
-//         --stream->num_keyframe;
-//     }
-//    }
-//
-//    /* Init encoding option */
-//    pj_bzero(&enc_opt, sizeof(enc_opt));
-//    if (stream->force_keyframe) {
-//        /* Force encoder to generate keyframe */
-//        enc_opt.force_keyframe = PJ_TRUE;
-//        stream->force_keyframe = PJ_FALSE;
-//        // HI_S32 HI_MPI_VENC_RequestIDR(VENC_CHN VeChn, HI_BOOL bInstant);
-//        // HI_S32 s32Ret = HI_MPI_VENC_RequestIDR(0, 0);
-//        HI_S32 s32Ret = HI_MPI_VENC_RequestIDR(0);
-////        HI_S32 s32Ret = HI_MPI_VENC_RequestIDR(0, 1);
-//        if (HI_SUCCESS != s32Ret) {
-//            PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_RequestIDR failed with %#x!", __FUNCTION__, s32Ret));
-//            return s32Ret;
-//        } else {
-//            PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_RequestIDR SUCCESS!", __FUNCTION__));
-//        }
-//        TRC_((channel->port.info.name.ptr, "Forcing encoder to generate keyframe"));
-//        return PJ_SUCCESS;
-//    }
-//
-//    status = encode_begin(stream, &enc_opt, frame,
-//                                            channel->buf_size -
-//                                               sizeof(pjmedia_rtp_hdr),
-//                                            &frame_out,
-//                                            &stream->has_more_data);
-//    if (status != PJ_SUCCESS) {
-//        LOGERR_((channel->port.info.name.ptr,
-//            "Codec encode_begin() error", status));
-//
-//        /* Update RTP timestamp */
-//        pjmedia_rtp_encode_rtp(&channel->rtp, channel->pt, 1, 0,
-//                       rtp_ts_len,  (const void**)&rtphdr,
-//                       &rtphdrlen);
-//        return status;
-//    }
-//
-//    pj_get_timestamp(&initial_time);
-//
-//    if ((stream->num_keyframe) && ((frame_out.bit_info & PJMEDIA_VID_FRM_KEYFRAME) == PJMEDIA_VID_FRM_KEYFRAME))
-//    {
-//       stream->last_keyframe_tx = initial_time;
-//    }
-//
-//    /* Loop while we have frame to send */
-//    for (;;) {
-//        status = pjmedia_rtp_encode_rtp(&channel->rtp,
-//                                        channel->pt,
-//                                        (stream->has_more_data == PJ_FALSE ? 1 : 0),
-//                                        (int)frame_out.size,
-//                                        rtp_ts_len,
-//                                        (const void**)&rtphdr,
-//                                        &rtphdrlen);
-//        if (status != PJ_SUCCESS) {
-//            LOGERR_((channel->port.info.name.ptr,
-//                "RTP encode_rtp() error", status));
-//            return status;
-//        }
-//
-//        /* When the payload length is zero, we should not send anything,
-//         * but proceed the rest normally.
-//         */
-//        if (frame_out.size != 0) {
-//            /* Copy RTP header to the beginning of packet */
-//            pj_memcpy(channel->buf, rtphdr, sizeof(pjmedia_rtp_hdr));
-//
-//            /* Send the RTP packet to the transport. */
-//            status = pjmedia_transport_send_rtp(stream->transport,
-//                            (char*)channel->buf,
-//                            frame_out.size +
-//                                sizeof(pjmedia_rtp_hdr));
-//
-//            if (status != PJ_SUCCESS) {
-//                enum { COUNT_TO_REPORT = 20 };
-//                if (stream->send_err_cnt++ == 0) {
-//                    LOGERR_((channel->port.info.name.ptr, "Transport send_rtp() error", status));
-//                }
-//                if (stream->send_err_cnt > COUNT_TO_REPORT)
-//                    stream->send_err_cnt = 0;
-//                /* Ignore this error */
-//            }
-//
-//            pjmedia_rtcp_tx_rtp(&stream->rtcp, (unsigned)frame_out.size);
-//            total_sent += frame_out.size;
-//            pkt_cnt++;
-//        }
-//
-//        if (!stream->has_more_data)
-//            break;
-//        // /* Next packets use same timestamp */
-//        rtp_ts_len = 0;
-//
-//        frame_out.size = 0;
-//
-//        /* Encode more! */
-//        status = encode_more(stream,
-//            channel->buf_size - sizeof(pjmedia_rtp_hdr), &frame_out, &stream->has_more_data);
-//        if (status != PJ_SUCCESS) {
-//            LOGERR_((channel->port.info.name.ptr,
-//                 "Codec encode_more() error", status));
-//            /* Ignore this error (?) */
-//            break;
-//        }
-//
-//        /* Send rate control */
-//        if (stream->info.rc_cfg.method==PJMEDIA_VID_STREAM_RC_SIMPLE_BLOCKING)
-//        {
-//            pj_timestamp now, next_send_ts, total_send_ts;
-//
-//            total_send_ts.u64 = total_sent * stream->ts_freq.u64 * 8 /
-//                    stream->info.rc_cfg.bandwidth;
-//            next_send_ts = initial_time;
-//            pj_add_timestamp(&next_send_ts, &total_send_ts);
-//
-//            pj_get_timestamp(&now);
-//            if (pj_cmp_timestamp(&now, &next_send_ts) < 0) {
-//            unsigned ms_sleep;
-//            ms_sleep = pj_elapsed_msec(&now, &next_send_ts);
-//
-//            if (ms_sleep > 10)
-//                ms_sleep = 10;
-//
-//            pj_thread_sleep(ms_sleep);
-//            }
-//        }
-//    }
-//
-//#if TRACE_RC
-//    /* Trace log for rate control */
-//    {
-//        pj_timestamp end_time;
-//        unsigned total_sleep;
-//
-//        pj_get_timestamp(&end_time);
-//        total_sleep = pj_elapsed_msec(&initial_time, &end_time);
-//        PJ_LOG(5, (stream->name.ptr, "total pkt=%d size=%d sleep=%d", pkt_cnt, total_sent, total_sleep));
-//
-//        if (stream->tx_start.u64 == 0)
-//            stream->tx_start = initial_time;
-//        stream->tx_end = end_time;
-//        stream->rc_total_pkt += pkt_cnt;
-//        stream->rc_total_sleep += total_sleep;
-//        stream->rc_total_img++;
-//    }
-//#endif
-//
-//    /* Check if now is the time to transmit RTCP SR/RR report.
-//     * We only do this when stream direction is not "decoding only", because
-//     * when it is, check_tx_rtcp() will be handled by get_frame().
-//     */
-//    if (stream->dir != PJMEDIA_DIR_DECODING) {
-//       check_tx_rtcp(stream, pj_ntohl(channel->rtp.out_hdr.ts));
-//    }
-//
-//    /* Do nothing if we have nothing to transmit */
-//    if (total_sent == 0) {
-//       return PJ_SUCCESS;
-//    }
-//
-//    /* Update stat */
-//    if (pkt_cnt) {
-//        stream->rtcp.stat.rtp_tx_last_ts = pj_ntohl(stream->enc->rtp.out_hdr.ts);
-//        stream->rtcp.stat.rtp_tx_last_seq = pj_ntohs(stream->enc->rtp.out_hdr.seq);
-//    }
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-//    /* Update timestamp of last sending packet. */
-//    stream->last_frm_ts_sent = frame->timestamp;
-//#endif
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-//static pj_status_t put_frame2(pjmedia_port *port,
-//                             pjmedia_frame *frame) {
-//   PJ_LOG(3, (THIS_FILE, "put_frame"));
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*) port->port_data.pdata;
-//    pjmedia_vid_channel *channel = stream->enc;
-//    pj_status_t status = 0;
-////    pjmedia_frame frame_out;
-//    unsigned rtp_ts_len;
-//    void *rtphdr;
-//    int rtphdrlen;
-//    pj_bool_t has_more_data = PJ_FALSE;
-//    pj_size_t total_sent = 0;
-//    pjmedia_vid_encode_opt enc_opt;
-//    unsigned pkt_cnt = 0;
-//    pj_timestamp initial_time;
-//    pj_timestamp null_ts ={{0}};
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA != 0
-//    /* If the interval since last sending packet is greater than
-//     * PJMEDIA_STREAM_KA_INTERVAL, send keep-alive packet.
-//     */
-//    if (stream->use_ka)
-//    {
-//	pj_uint32_t dtx_duration;
-//
-//	dtx_duration = pj_timestamp_diff32(&stream->last_frm_ts_sent,
-//					   &frame->timestamp);
-//
-//        if (dtx_duration >
-//	    PJMEDIA_STREAM_KA_INTERVAL * stream->info.codec_info.clock_rate)
-//	{
-//	    send_keep_alive_packet(stream);
-//	    stream->last_frm_ts_sent = frame->timestamp;
-//	}
-//    }
-//#endif
-//
-//    /* Don't do anything if stream is paused */
-//    if (channel->paused) {
-//	return PJ_SUCCESS;
-//    }
-//
-//    /* Get frame length in timestamp unit */
-//    rtp_ts_len = stream->frame_ts_len;
-//
-//    /* Empty video frame? Just update RTP timestamp for now */
-//    if (frame->type==PJMEDIA_FRAME_TYPE_VIDEO && frame->size==0) {
-//	pjmedia_rtp_encode_rtp(&channel->rtp, channel->pt, 1, 0,
-//			       rtp_ts_len,  (const void**)&rtphdr,
-//			       &rtphdrlen);
-//	return PJ_SUCCESS;
-//    }
-//    
-//    MY_DBG();
-//
-//    pjmedia_frame *frame_out;
-//    MY_DBG();
-//    frame_out = PJ_POOL_ZALLOC_T(stream->encoder_pool, pjmedia_frame);
-//    MY_DBG();
-//    PJ_ASSERT_RETURN(frame_out != NULL, PJ_ENOMEM);
-//    MY_DBG();
-//    
-////    pj_size_t alloc_size = (pj_size_t)((char*)channel->buf) + sizeof(pjmedia_rtp_hdr);
-//    pj_size_t alloc_size = (pj_size_t)channel->buf_size;
-//    
-//    
-//    PJ_LOG(4, (THIS_FILE, "%s: (char*)channel->buf: %u", __FUNCTION__, (char*)channel->buf));
-//    PJ_LOG(4, (THIS_FILE, "%s: sizeof(pjmedia_rtp_hdr): %u", __FUNCTION__, sizeof(pjmedia_rtp_hdr)));
-//    PJ_LOG(4, (THIS_FILE, "%s: alloc_size: %u", __FUNCTION__, alloc_size));
-//    frame_out->buf = pj_pool_zalloc(stream->encoder_pool, alloc_size);
-//    MY_DBG();
-////    frame_out.buf = (char*)pj_pool_calloc(stream->encoder_pool, stStat.u32CurPacks, sizeof(char));
-////    MY_DBG();
-//    if(!frame_out->buf) {
-//        PJ_LOG(4, (THIS_FILE, "%s: malloc stream pack failed!", __FUNCTION__));
-////        vp->thread_quit = PJ_TRUE;
-////        break;
-//    }
-//    /* Init frame_out buffer. */
-//    /*
-//    pj_bzero(&frame_out, sizeof(frame_out));
-//    frame_out.buf = ((char*)channel->buf) + sizeof(pjmedia_rtp_hdr);
-//     */
-//
-//    /* Check if need to send keyframe. */
-//    if (stream->num_keyframe &&
-//	(pj_cmp_timestamp(&null_ts, &stream->last_keyframe_tx) != 0))
-//    {
-//	unsigned elapse_time;
-//	pj_timestamp now;
-//
-//	pj_get_timestamp(&now);
-//
-//	elapse_time = pj_elapsed_msec(&stream->last_keyframe_tx, &now);
-//
-//	if (elapse_time > stream->info.sk_cfg.interval)
-//	{
-//	    stream->force_keyframe = PJ_TRUE;
-//	    --stream->num_keyframe;
-//	}
-//    }
-//
-//    /* Init encoding option */
-//    pj_bzero(&enc_opt, sizeof(enc_opt));
-//    if (stream->force_keyframe) {
-//	/* Force encoder to generate keyframe */
-//	enc_opt.force_keyframe = PJ_TRUE;
-//	stream->force_keyframe = PJ_FALSE;
-//	TRC_((channel->port.info.name.ptr,
-//	      "Forcing encoder to generate keyframe"));
-//    }
-//
-//    status = encode_begin(stream, &enc_opt, frame,
-//                                            channel->buf_size -
-//                                               sizeof(pjmedia_rtp_hdr),
-//                                            frame_out,
-//                                            &has_more_data);
-//    /* Encode! */
-////    status = pjmedia_vid_codec_encode_begin(stream->codec, &enc_opt, frame,
-////                                            channel->buf_size -
-////                                               sizeof(pjmedia_rtp_hdr),
-////                                            &frame_out,
-////                                            &has_more_data);
-//    if (status != PJ_SUCCESS) {
-//	LOGERR_((channel->port.info.name.ptr, status,
-//		"Codec encode_begin() error"));
-//
-//	/* Update RTP timestamp */
-//	pjmedia_rtp_encode_rtp(&channel->rtp, channel->pt, 1, 0,
-//			       rtp_ts_len,  (const void**)&rtphdr,
-//			       &rtphdrlen);
-//	return status;
-//    }
-//
-//    pj_get_timestamp(&initial_time);
-//
-//    if ((stream->num_keyframe) &&
-//	((frame_out->bit_info & PJMEDIA_VID_FRM_KEYFRAME)
-//						  == PJMEDIA_VID_FRM_KEYFRAME))
-//    {
-//	stream->last_keyframe_tx = initial_time;
-//    }
-//
-//    /* Loop while we have frame to send */
-//    for (;;) {
-//	status = pjmedia_rtp_encode_rtp(&channel->rtp,
-//	                                channel->pt,
-//	                                (has_more_data == PJ_FALSE ? 1 : 0),
-//	                                (int)frame_out->size,
-//	                                rtp_ts_len,
-//	                                (const void**)&rtphdr,
-//	                                &rtphdrlen);
-//	if (status != PJ_SUCCESS) {
-//	    LOGERR_((channel->port.info.name.ptr, status,
-//		    "RTP encode_rtp() error"));
-//	    return status;
-//	}
-//
-//	/* When the payload length is zero, we should not send anything,
-//	 * but proceed the rest normally.
-//	 */
-//	if (frame_out->size != 0) {
-//	    /* Copy RTP header to the beginning of packet */
-//	    pj_memcpy(channel->buf, rtphdr, sizeof(pjmedia_rtp_hdr));
-//
-//	    /* Send the RTP packet to the transport. */
-//	    status = pjmedia_transport_send_rtp(stream->transport,
-//						(char*)channel->buf,
-//						frame_out->size +
-//						    sizeof(pjmedia_rtp_hdr));
-//	    if (status != PJ_SUCCESS) {
-//		if (stream->rtp_tx_err_cnt++ == 0) {
-//		    LOGERR_((channel->port.info.name.ptr, status,
-//			     "Error sending RTP"));
-//		}
-//		if (stream->rtp_tx_err_cnt > SEND_ERR_COUNT_TO_REPORT) {
-//		    stream->rtp_tx_err_cnt = 0;
-//		}
-//	    }
-//	    pjmedia_rtcp_tx_rtp(&stream->rtcp, (unsigned)frame_out->size);
-//	    total_sent += frame_out->size;
-//	    pkt_cnt++;
-//	}
-//
-//	if (!has_more_data)
-//	    break;
-//
-//	/* Next packets use same timestamp */
-//	rtp_ts_len = 0;
-//
-//	frame_out->size = 0;
-//
-//        status = encode_more(stream,
-//	                                       channel->buf_size -
-//						   sizeof(pjmedia_rtp_hdr),
-//				               frame_out,
-//					       &has_more_data);
-//        
-//	/* Encode more! */
-////	status = pjmedia_vid_codec_encode_more(stream->codec,
-////	                                       channel->buf_size -
-////						   sizeof(pjmedia_rtp_hdr),
-////				               &frame_out,
-////					       &has_more_data);
-//        
-//	if (status != PJ_SUCCESS) {
-//	    LOGERR_((channel->port.info.name.ptr, status,
-//		     "Codec encode_more() error"));
-//	    /* Ignore this error (?) */
-//	    break;
-//	}
-//
-//	/* Send rate control */
-//	if (stream->info.rc_cfg.method==PJMEDIA_VID_STREAM_RC_SIMPLE_BLOCKING)
-//	{
-//	    pj_timestamp now, next_send_ts, total_send_ts;
-//
-//	    total_send_ts.u64 = total_sent * stream->ts_freq.u64 * 8 /
-//				stream->info.rc_cfg.bandwidth;
-//	    next_send_ts = initial_time;
-//	    pj_add_timestamp(&next_send_ts, &total_send_ts);
-//
-//	    pj_get_timestamp(&now);
-//	    if (pj_cmp_timestamp(&now, &next_send_ts) < 0) {
-//		unsigned ms_sleep;
-//		ms_sleep = pj_elapsed_msec(&now, &next_send_ts);
-//
-//		if (ms_sleep > 10)
-//		    ms_sleep = 10;
-//
-//		pj_thread_sleep(ms_sleep);
-//	    }
-//	}
-//    }
-//
-//#if TRACE_RC
-//    /* Trace log for rate control */
-//    {
-//	pj_timestamp end_time;
-//	unsigned total_sleep;
-//
-//	pj_get_timestamp(&end_time);
-//	total_sleep = pj_elapsed_msec(&initial_time, &end_time);
-//	PJ_LOG(5, (stream->name.ptr, "total pkt=%d size=%d sleep=%d",
-//		   pkt_cnt, total_sent, total_sleep));
-//
-//	if (stream->tx_start.u64 == 0)
-//	    stream->tx_start = initial_time;
-//	stream->tx_end = end_time;
-//	stream->rc_total_pkt += pkt_cnt;
-//	stream->rc_total_sleep += total_sleep;
-//	stream->rc_total_img++;
-//    }
-//#endif
-//
-//    /* Check if now is the time to transmit RTCP SR/RR report.
-//     * We only do this when stream direction is not "decoding only", because
-//     * when it is, check_tx_rtcp() will be handled by get_frame().
-//     */
-//    if (stream->dir != PJMEDIA_DIR_DECODING) {
-//	check_tx_rtcp(stream, pj_ntohl(channel->rtp.out_hdr.ts));
-//    }
-//
-//    /* Do nothing if we have nothing to transmit */
-//    if (total_sent == 0) {
-//	return PJ_SUCCESS;
-//    }
-//
-//    /* Update stat */
-//    if (pkt_cnt) {
-//	stream->rtcp.stat.rtp_tx_last_ts =
-//		pj_ntohl(stream->enc->rtp.out_hdr.ts);
-//	stream->rtcp.stat.rtp_tx_last_seq =
-//		pj_ntohs(stream->enc->rtp.out_hdr.seq);
-//    }
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-//    /* Update timestamp of last sending packet. */
-//    stream->last_frm_ts_sent = frame->timestamp;
-//#endif
-//
-//    return PJ_SUCCESS;
-//}
-//
-//static pj_status_t put_frame1(pjmedia_port *port,
-//                             pjmedia_frame *frame)
-//{
-//    PJ_LOG(3, (THIS_FILE, "put_frame"));
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*) port->port_data.pdata;
-//    pjmedia_vid_channel *channel = stream->enc;
-//    pj_status_t status = 0;
-////    pjmedia_frame frame_out;
-//    unsigned rtp_ts_len;
-//    void *rtphdr;
-//    int rtphdrlen;
-//    pj_bool_t has_more_data = PJ_FALSE;
-//    pj_size_t total_sent = 0;
-//    pjmedia_vid_encode_opt enc_opt;
-//    unsigned pkt_cnt = 0;
-//    pj_timestamp initial_time;
-//    pj_timestamp null_ts ={{0}};
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA != 0
-//    /* If the interval since last sending packet is greater than
-//     * PJMEDIA_STREAM_KA_INTERVAL, send keep-alive packet.
-//     */
-//    if (stream->use_ka)
-//    {
-//	pj_uint32_t dtx_duration;
-//
-//	dtx_duration = pj_timestamp_diff32(&stream->last_frm_ts_sent,
-//					   &frame->timestamp);
-//
-//        if (dtx_duration >
-//	    PJMEDIA_STREAM_KA_INTERVAL * stream->info.codec_info.clock_rate)
-//	{
-//	    send_keep_alive_packet(stream);
-//	    stream->last_frm_ts_sent = frame->timestamp;
-//	}
-//    }
-//#endif
-//
-//    /* Don't do anything if stream is paused */
-//    if (channel->paused) {
-//	return PJ_SUCCESS;
-//    }
-//
-//    /* Get frame length in timestamp unit */
-//    rtp_ts_len = stream->frame_ts_len;
-//
-//    /* Empty video frame? Just update RTP timestamp for now */
-//    if (frame->type==PJMEDIA_FRAME_TYPE_VIDEO && frame->size==0) {
-//	pjmedia_rtp_encode_rtp(&channel->rtp, channel->pt, 1, 0,
-//			       rtp_ts_len,  (const void**)&rtphdr,
-//			       &rtphdrlen);
-//	return PJ_SUCCESS;
-//    }
-//    
-//    MY_DBG();
-//
-//    pjmedia_frame *frame_out;
-//    frame_out = PJ_POOL_ZALLOC_T(stream->encoder_pool, pjmedia_frame);
-//    MY_DBG();
-//    PJ_ASSERT_RETURN(frame_out != NULL, PJ_ENOMEM);
-//    MY_DBG();
-//    
-////    pj_size_t alloc_size = (pj_size_t)((char*)channel->buf) + sizeof(pjmedia_rtp_hdr);
-//    pj_size_t alloc_size = (pj_size_t)channel->buf_size;
-//    
-//    
-//    PJ_LOG(4, (THIS_FILE, "%s: (char*)channel->buf: %u", __FUNCTION__, (char*)channel->buf));
-//    PJ_LOG(4, (THIS_FILE, "%s: sizeof(pjmedia_rtp_hdr): %u", __FUNCTION__, sizeof(pjmedia_rtp_hdr)));
-//    PJ_LOG(4, (THIS_FILE, "%s: alloc_size: %u", __FUNCTION__, alloc_size));
-//    frame_out->buf = pj_pool_zalloc(stream->encoder_pool, alloc_size);
-//    MY_DBG();
-////    frame_out.buf = (char*)pj_pool_calloc(stream->encoder_pool, stStat.u32CurPacks, sizeof(char));
-////    MY_DBG();
-//    if(!frame_out->buf) {
-//        PJ_LOG(4, (THIS_FILE, "%s: malloc stream pack failed!", __FUNCTION__));
-////        vp->thread_quit = PJ_TRUE;
-////        break;
-//    }
-//    /* Init frame_out buffer. */
-//    /*
-//    pj_bzero(&frame_out, sizeof(frame_out));
-//    frame_out.buf = ((char*)channel->buf) + sizeof(pjmedia_rtp_hdr);
-//     */
-//
-//    /* Check if need to send keyframe. */
-//    if (stream->num_keyframe &&
-//	(pj_cmp_timestamp(&null_ts, &stream->last_keyframe_tx) != 0))
-//    {
-//	unsigned elapse_time;
-//	pj_timestamp now;
-//
-//	pj_get_timestamp(&now);
-//
-//	elapse_time = pj_elapsed_msec(&stream->last_keyframe_tx, &now);
-//
-//	if (elapse_time > stream->info.sk_cfg.interval)
-//	{
-//	    stream->force_keyframe = PJ_TRUE;
-//	    --stream->num_keyframe;
-//	}
-//    }
-//
-//    /* Init encoding option */
-//    pj_bzero(&enc_opt, sizeof(enc_opt));
-//    if (stream->force_keyframe) {
-//	/* Force encoder to generate keyframe */
-//	enc_opt.force_keyframe = PJ_TRUE;
-//	stream->force_keyframe = PJ_FALSE;
-//	TRC_((channel->port.info.name.ptr,
-//	      "Forcing encoder to generate keyframe"));
-//    }
-//
-//    status = encode_begin(stream, &enc_opt, frame,
-//                                            channel->buf_size -
-//                                               sizeof(pjmedia_rtp_hdr),
-//                                            frame_out,
-//                                            &has_more_data);
-//    /* Encode! */
-////    status = pjmedia_vid_codec_encode_begin(stream->codec, &enc_opt, frame,
-////                                            channel->buf_size -
-////                                               sizeof(pjmedia_rtp_hdr),
-////                                            &frame_out,
-////                                            &has_more_data);
-//    if (status != PJ_SUCCESS) {
-//	LOGERR_((channel->port.info.name.ptr, status,
-//		"Codec encode_begin() error"));
-//
-//	/* Update RTP timestamp */
-//	pjmedia_rtp_encode_rtp(&channel->rtp, channel->pt, 1, 0,
-//			       rtp_ts_len,  (const void**)&rtphdr,
-//			       &rtphdrlen);
-//	return status;
-//    }
-//
-//    pj_get_timestamp(&initial_time);
-//
-//    if ((stream->num_keyframe) &&
-//	((frame_out->bit_info & PJMEDIA_VID_FRM_KEYFRAME)
-//						  == PJMEDIA_VID_FRM_KEYFRAME))
-//    {
-//	stream->last_keyframe_tx = initial_time;
-//    }
-//
-//    /* Loop while we have frame to send */
-//    for (;;) {
-//	status = pjmedia_rtp_encode_rtp(&channel->rtp,
-//	                                channel->pt,
-//	                                (has_more_data == PJ_FALSE ? 1 : 0),
-//	                                (int)frame_out->size,
-//	                                rtp_ts_len,
-//	                                (const void**)&rtphdr,
-//	                                &rtphdrlen);
-//	if (status != PJ_SUCCESS) {
-//	    LOGERR_((channel->port.info.name.ptr, status,
-//		    "RTP encode_rtp() error"));
-//	    return status;
-//	}
-//
-//	/* When the payload length is zero, we should not send anything,
-//	 * but proceed the rest normally.
-//	 */
-//	if (frame_out->size != 0) {
-//	    /* Copy RTP header to the beginning of packet */
-//	    pj_memcpy(channel->buf, rtphdr, sizeof(pjmedia_rtp_hdr));
-//
-//	    /* Send the RTP packet to the transport. */
-//	    status = pjmedia_transport_send_rtp(stream->transport,
-//						(char*)channel->buf,
-//						frame_out->size +
-//						    sizeof(pjmedia_rtp_hdr));
-//	    if (status != PJ_SUCCESS) {
-//		if (stream->rtp_tx_err_cnt++ == 0) {
-//		    LOGERR_((channel->port.info.name.ptr, status,
-//			     "Error sending RTP"));
-//		}
-//		if (stream->rtp_tx_err_cnt > SEND_ERR_COUNT_TO_REPORT) {
-//		    stream->rtp_tx_err_cnt = 0;
-//		}
-//	    }
-//	    pjmedia_rtcp_tx_rtp(&stream->rtcp, (unsigned)frame_out->size);
-//	    total_sent += frame_out->size;
-//	    pkt_cnt++;
-//	}
-//
-//	if (!has_more_data)
-//	    break;
-//
-//	/* Next packets use same timestamp */
-//	rtp_ts_len = 0;
-//
-//	frame_out->size = 0;
-//
-//        status = encode_more(stream,
-//	                                       channel->buf_size -
-//						   sizeof(pjmedia_rtp_hdr),
-//				               frame_out,
-//					       &has_more_data);
-//        
-//	/* Encode more! */
-////	status = pjmedia_vid_codec_encode_more(stream->codec,
-////	                                       channel->buf_size -
-////						   sizeof(pjmedia_rtp_hdr),
-////				               &frame_out,
-////					       &has_more_data);
-//        
-//	if (status != PJ_SUCCESS) {
-//	    LOGERR_((channel->port.info.name.ptr, status,
-//		     "Codec encode_more() error"));
-//	    /* Ignore this error (?) */
-//	    break;
-//	}
-//
-//	/* Send rate control */
-//	if (stream->info.rc_cfg.method==PJMEDIA_VID_STREAM_RC_SIMPLE_BLOCKING)
-//	{
-//	    pj_timestamp now, next_send_ts, total_send_ts;
-//
-//	    total_send_ts.u64 = total_sent * stream->ts_freq.u64 * 8 /
-//				stream->info.rc_cfg.bandwidth;
-//	    next_send_ts = initial_time;
-//	    pj_add_timestamp(&next_send_ts, &total_send_ts);
-//
-//	    pj_get_timestamp(&now);
-//	    if (pj_cmp_timestamp(&now, &next_send_ts) < 0) {
-//		unsigned ms_sleep;
-//		ms_sleep = pj_elapsed_msec(&now, &next_send_ts);
-//
-//		if (ms_sleep > 10)
-//		    ms_sleep = 10;
-//
-//		pj_thread_sleep(ms_sleep);
-//	    }
-//	}
-//    }
-//
-//#if TRACE_RC
-//    /* Trace log for rate control */
-//    {
-//	pj_timestamp end_time;
-//	unsigned total_sleep;
-//
-//	pj_get_timestamp(&end_time);
-//	total_sleep = pj_elapsed_msec(&initial_time, &end_time);
-//	PJ_LOG(5, (stream->name.ptr, "total pkt=%d size=%d sleep=%d",
-//		   pkt_cnt, total_sent, total_sleep));
-//
-//	if (stream->tx_start.u64 == 0)
-//	    stream->tx_start = initial_time;
-//	stream->tx_end = end_time;
-//	stream->rc_total_pkt += pkt_cnt;
-//	stream->rc_total_sleep += total_sleep;
-//	stream->rc_total_img++;
-//    }
-//#endif
-//
-//    /* Check if now is the time to transmit RTCP SR/RR report.
-//     * We only do this when stream direction is not "decoding only", because
-//     * when it is, check_tx_rtcp() will be handled by get_frame().
-//     */
-//    if (stream->dir != PJMEDIA_DIR_DECODING) {
-//	check_tx_rtcp(stream, pj_ntohl(channel->rtp.out_hdr.ts));
-//    }
-//
-//    /* Do nothing if we have nothing to transmit */
-//    if (total_sent == 0) {
-//	return PJ_SUCCESS;
-//    }
-//
-//    /* Update stat */
-//    if (pkt_cnt) {
-//	stream->rtcp.stat.rtp_tx_last_ts =
-//		pj_ntohl(stream->enc->rtp.out_hdr.ts);
-//	stream->rtcp.stat.rtp_tx_last_seq =
-//		pj_ntohs(stream->enc->rtp.out_hdr.seq);
-//    }
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-//    /* Update timestamp of last sending packet. */
-//    stream->last_frm_ts_sent = frame->timestamp;
-//#endif
-//
-//    return PJ_SUCCESS;
-//}
-//
-///* Decode one image from jitter buffer */
-//static pj_status_t decode_frame(pjmedia_vid_stream *stream,
-//                                pjmedia_frame *frame)
-//{
-//    pjmedia_vid_channel *channel = stream->dec;
-//    pj_uint32_t last_ts = 0, frm_ts = 0;
-//    int frm_first_seq = 0, frm_last_seq = 0;
-//    pj_bool_t got_frame = PJ_FALSE;
-//    unsigned cnt, frm_pkt_cnt = 0, frm_cnt = 0;
-//    pj_status_t status;
-//
-//    /* Repeat get payload from the jitter buffer until all payloads with same
-//     * timestamp are collected.
-//     */
-//
-//    /* Check if we got a decodable frame */
-//    for (cnt=0; ; ) {
-//	char ptype;
-//	pj_uint32_t ts;
-//	int seq;
-//
-//	/* Peek frame from jitter buffer. */
-//	pjmedia_jbuf_peek_frame(stream->jb, cnt, NULL, NULL,
-//				&ptype, NULL, &ts, &seq);
-//	if (ptype == PJMEDIA_JB_NORMAL_FRAME) {
-//	    if (stream->last_dec_ts ==  ts) {
-//		/* Remove any late packet (the frame has been decoded) */
-//		pjmedia_jbuf_remove_frame(stream->jb, 1);
-//		continue;
-//	    }
-//
-//	    if (last_ts == 0) {
-//		last_ts = ts;
-//
-//		/* Init timestamp and first seq of the first frame */
-//		frm_ts = ts;
-//		frm_first_seq = seq;
-//	    }
-//	    if (ts != last_ts) {
-//		last_ts = ts;
-//		if (frm_pkt_cnt == 0)
-//		    frm_pkt_cnt = cnt;
-//
-//		/* Is it time to decode? Check with minimum delay setting */
-//		if (++frm_cnt == stream->dec_delay_cnt) {
-//		    got_frame = PJ_TRUE;
-//		    break;
-//		}
-//	    }
-//	} else if (ptype == PJMEDIA_JB_ZERO_EMPTY_FRAME) {
-//	    /* No more packet in the jitter buffer */
-//	    break;
-//	}
-//
-//	++cnt;
-//    }
-//
-//    if (got_frame) {
-//	unsigned i;
-//
-//	/* Exclude any MISSING frames in the end of the packets array, as
-//	 * it may be part of the next video frame (late packets).
-//	 */
-//	for (; frm_pkt_cnt > 1; --frm_pkt_cnt) {
-//	    char ptype;
-//	    pjmedia_jbuf_peek_frame(stream->jb, frm_pkt_cnt, NULL, NULL, &ptype,
-//				    NULL, NULL, NULL);
-//	    if (ptype == PJMEDIA_JB_NORMAL_FRAME)
-//		break;
-//	}
-//
-//	/* Check if the packet count for this frame exceeds the limit */
-//	if (frm_pkt_cnt > stream->rx_frame_cnt) {
-//	    PJ_LOG(1,(channel->port.info.name.ptr,
-//		      "Discarding %u frames because array is full!",
-//		      frm_pkt_cnt - stream->rx_frame_cnt));
-//	    pjmedia_jbuf_remove_frame(stream->jb,
-//				      frm_pkt_cnt - stream->rx_frame_cnt);
-//	    frm_pkt_cnt = stream->rx_frame_cnt;
-//	}
-//
-//	/* Generate frame bitstream from the payload */
-//	for (i = 0; i < frm_pkt_cnt; ++i) {
-//	    char ptype;
-//
-//	    stream->rx_frames[i].type = PJMEDIA_FRAME_TYPE_VIDEO;
-//	    stream->rx_frames[i].timestamp.u64 = frm_ts;
-//	    stream->rx_frames[i].bit_info = 0;
-//
-//	    /* We use jbuf_peek_frame() as it will returns the pointer of
-//	     * the payload (no buffer and memcpy needed), just as we need.
-//	     */
-//	    pjmedia_jbuf_peek_frame(stream->jb, i,
-//				    (const void**)&stream->rx_frames[i].buf,
-//				    &stream->rx_frames[i].size, &ptype,
-//				    NULL, NULL, &frm_last_seq);
-//
-//	    if (ptype != PJMEDIA_JB_NORMAL_FRAME) {
-//		/* Packet lost, must set payload to NULL and keep going */
-//		stream->rx_frames[i].buf = NULL;
-//		stream->rx_frames[i].size = 0;
-//		stream->rx_frames[i].type = PJMEDIA_FRAME_TYPE_NONE;
-//		continue;
-//	    }
-//	}
-//
-//	/* Decode */
-//	status = pjmedia_vid_codec_decode(stream->codec, frm_pkt_cnt,
-//	                                  stream->rx_frames,
-//	                                  (unsigned)frame->size, frame);
-//	if (status != PJ_SUCCESS) {
-//	    LOGERR_((channel->port.info.name.ptr, status,
-//		     "codec decode() error"));
-//	    frame->type = PJMEDIA_FRAME_TYPE_NONE;
-//	    frame->size = 0;
-//	}
-//
-//	pjmedia_jbuf_remove_frame(stream->jb, frm_pkt_cnt);
-//    }
-//
-//    /* Learn remote frame rate after successful decoding */
-//    if (got_frame && frame->type == PJMEDIA_FRAME_TYPE_VIDEO && frame->size)
-//    {
-//	/* Only check remote frame rate when timestamp is not wrapping and
-//	 * sequence is increased by 1.
-//	 */
-//	if (frm_ts > stream->last_dec_ts &&
-//	    frm_first_seq - stream->last_dec_seq == 1)
-//	{
-//	    pj_uint32_t ts_diff;
-//	    pjmedia_ratio new_fps;
-//
-//	    ts_diff = frm_ts - stream->last_dec_ts;
-//
-//	    /* Calculate new FPS based on RTP timestamp diff */
-//	    if (stream->info.codec_info.clock_rate % ts_diff == 0) {
-//		new_fps.num = stream->info.codec_info.clock_rate/ts_diff;
-//		new_fps.denum = 1;
-//	    } else {
-//		new_fps.num = stream->info.codec_info.clock_rate;
-//		new_fps.denum = ts_diff;
-//	    }
-//
-//	    /* Only apply the new FPS when it is >0, <=100, and increasing */
-//	    if (new_fps.num/new_fps.denum <= 100 &&
-//		new_fps.num/new_fps.denum > 0 &&
-//		new_fps.num*1.0/new_fps.denum >
-//		stream->dec_max_fps.num*1.0/stream->dec_max_fps.denum)
-//	    {
-//		pjmedia_video_format_detail *vfd;
-//		vfd = pjmedia_format_get_video_format_detail(
-//					&channel->port.info.fmt, PJ_TRUE);
-//
-//		/* Update FPS in channel & stream info */
-//		vfd->fps = new_fps;
-//		stream->info.codec_param->dec_fmt.det.vid.fps = new_fps;
-//
-//		/* Update the decoding delay */
-//		{
-//		    pjmedia_jb_state jb_state;
-//		    pjmedia_jbuf_get_state(stream->jb, &jb_state);
-//
-//		    stream->dec_delay_cnt =
-//				    ((PJMEDIA_VID_STREAM_DECODE_MIN_DELAY_MSEC *
-//				      vfd->fps.num) +
-//				     (1000 * vfd->fps.denum) - 1) /
-//				    (1000 * vfd->fps.denum);
-//		    if (stream->dec_delay_cnt < 1)
-//			stream->dec_delay_cnt = 1;
-//		    if (stream->dec_delay_cnt > jb_state.max_count * 4/5)
-//			stream->dec_delay_cnt = jb_state.max_count * 4/5;
-//		}
-//
-//		/* Publish PJMEDIA_EVENT_FMT_CHANGED event */
-//		{
-//		    pjmedia_event *event = &stream->fmt_event;
-//
-//		    /* Update max fps of decoding dir */
-//		    stream->dec_max_fps = vfd->fps;
-//
-//		    /* Use the buffered format changed event:
-//		     * - just update the framerate if there is pending event,
-//		     * - otherwise, init the whole event.
-//		     */
-//		    if (stream->fmt_event.type != PJMEDIA_EVENT_NONE) {
-//			event->data.fmt_changed.new_fmt.det.vid.fps = vfd->fps;
-//		    } else {
-//			pjmedia_event_init(event, PJMEDIA_EVENT_FMT_CHANGED,
-//					   &frame->timestamp, stream);
-//			event->data.fmt_changed.dir = PJMEDIA_DIR_DECODING;
-//			pj_memcpy(&event->data.fmt_changed.new_fmt,
-//				  &stream->info.codec_param->dec_fmt,
-//				  sizeof(pjmedia_format));
-//		    }
-//		}
-//	    }
-//	}
-//
-//	/* Update last frame seq and timestamp */
-//	stream->last_dec_seq = frm_last_seq;
-//	stream->last_dec_ts = frm_ts;
-//    }
-//
-//    return got_frame ? PJ_SUCCESS : PJ_ENOTFOUND;
-//}
-//
-//
-//static pj_status_t get_frame(pjmedia_port *port,
-//                             pjmedia_frame *frame)
-//{
-//    pjmedia_vid_stream *stream = (pjmedia_vid_stream*) port->port_data.pdata;
-//    pjmedia_vid_channel *channel = stream->dec;
-//
-//    /* Return no frame is channel is paused */
-//    if (channel->paused) {
-//	frame->type = PJMEDIA_FRAME_TYPE_NONE;
-//	frame->size = 0;
-//	return PJ_SUCCESS;
-//    }
-//
-//    /* Report pending events. Do not publish the event while holding the
-//     * jb_mutex as that would lead to deadlock. It should be safe to
-//     * operate on fmt_event without the mutex because format change normally
-//     * would only occur once during the start of the media.
-//     */
-//    if (stream->fmt_event.type != PJMEDIA_EVENT_NONE) {
-//	pjmedia_event_fmt_changed_data *fmt_chg_data;
-//
-//	fmt_chg_data = &stream->fmt_event.data.fmt_changed;
-//
-//	/* Update stream info and decoding channel port info */
-//	if (fmt_chg_data->dir == PJMEDIA_DIR_DECODING) {
-//	    pjmedia_format_copy(&stream->info.codec_param->dec_fmt,
-//				&fmt_chg_data->new_fmt);
-//	    pjmedia_format_copy(&stream->dec->port.info.fmt,
-//				&fmt_chg_data->new_fmt);
-//
-//	    /* Override the framerate to be 1.5x higher in the event
-//	     * for the renderer.
-//	     */
-//	    fmt_chg_data->new_fmt.det.vid.fps.num *= 3;
-//	    fmt_chg_data->new_fmt.det.vid.fps.num /= 2;
-//	} else {
-//	    pjmedia_format_copy(&stream->info.codec_param->enc_fmt,
-//				&fmt_chg_data->new_fmt);
-//	    pjmedia_format_copy(&stream->enc->port.info.fmt,
-//				&fmt_chg_data->new_fmt);
-//	}
-//
-//	dump_port_info(fmt_chg_data->dir==PJMEDIA_DIR_DECODING ?
-//			stream->dec : stream->enc,
-//		       "changed");
-//
-//	pjmedia_event_publish(NULL, port, &stream->fmt_event, 0);
-//
-//	stream->fmt_event.type = PJMEDIA_EVENT_NONE;
-//    }
-//
-//    if (stream->miss_keyframe_event.type != PJMEDIA_EVENT_NONE) {
-//	pjmedia_event_publish(NULL, port, &stream->miss_keyframe_event,
-//			      PJMEDIA_EVENT_PUBLISH_POST_EVENT);
-//	stream->miss_keyframe_event.type = PJMEDIA_EVENT_NONE;
-//    }
-//
-//    pj_mutex_lock( stream->jb_mutex );
-//
-//    if (stream->dec_frame.size == 0) {
-//	/* Don't have frame in buffer, try to decode one */
-//	if (decode_frame(stream, frame) != PJ_SUCCESS) {
-//	    frame->type = PJMEDIA_FRAME_TYPE_NONE;
-//	    frame->size = 0;
-//	}
-//    } else {
-//	if (frame->size < stream->dec_frame.size) {
-//	    PJ_LOG(4,(stream->dec->port.info.name.ptr,
-//		      "Error: not enough buffer for decoded frame "
-//		      "(supplied=%d, required=%d)",
-//		      (int)frame->size, (int)stream->dec_frame.size));
-//	    frame->type = PJMEDIA_FRAME_TYPE_NONE;
-//	    frame->size = 0;
-//	} else {
-//	    frame->type = stream->dec_frame.type;
-//	    frame->timestamp = stream->dec_frame.timestamp;
-//	    frame->size = stream->dec_frame.size;
-//	    pj_memcpy(frame->buf, stream->dec_frame.buf, frame->size);
-//	}
-//
-//	stream->dec_frame.size = 0;
-//    }
-//
-//    pj_mutex_unlock( stream->jb_mutex );
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-//pj_status_t log_bytes1(const void *object, size_t size) {
-//    // This is for C++; in C just drop the static_cast<>() and assign.
-//    // const unsigned char * const bytes = static_cast<const unsigned char *>(object);
-//    const unsigned char * const bytes = object;
-//    size_t i;
-//
-//    char str[100];
-//    sprintf(str, "%s", "");
-//
-//    int edge = 100;
-//
-//    // for(i = 0; i < size; i++)
-//    if (size > edge) {
-//        for(i = 0; i < edge; i++) {
-//            // printf("%02x ", bytes[i]);
-//            if (i == 0) {
-//                sprintf(str, "%02x", bytes[i]);
-//            } else {
-//                sprintf(str, "%s %02x", str, bytes[i]);
-//            }
-//
-//        }
-//    } else {
-//        for(i = 0; i < size; i++) {
-//            // printf("%02x ", bytes[i]);
-//            if (i == 0) {
-//                sprintf(str, "%02x", bytes[i]);
-//            } else {
-//                sprintf(str, "%s %02x", str, bytes[i]);
-//            }
-//            // sprintf(str, "%s %02x", str, bytes[i]);
-//        }
-//    }
-//    // printf("[ ");
-//    // printf("]\n");
-//    PJ_LOG(4,(THIS_FILE, "[ %s ]", str));
-//    return PJ_SUCCESS;
-//}
-//
-//static int cv_thread_func (void *arg) {
-//    PJ_LOG(4, (THIS_FILE, "cv_thread_func: Started"));
-//    pjmedia_vid_stream* vp = (pjmedia_vid_stream *) arg;
-//
-//    VENC_CHN_ATTR_S stVencChnAttr;
-//    HI_S32 maxfd = 0;
-//    struct timeval TimeoutVal;
-//    fd_set read_fds;
-//    HI_S32 VencFd[VENC_MAX_CHN_NUM];
-//    HI_S32 s32ChnTotal = 1;
-//    VENC_CHN VencChn;
-//    HI_S32 s32Ret;
-//    HI_S32 i;
-//    VENC_CHN_STAT_S stStat;
-//    VENC_STREAM_S stStream;
-//
-//
-//    vp->enc_frame_size =  0;
-//    vp->enc_processed = 0;
-//    // unsigned             enc_frame_size =  0;
-//    // unsigned             enc_processed = 0;
-//    // pj_uint8_t          *enc_frame_whole;
-//    const pj_uint8_t *payload;
-//    pj_size_t payload_len;
-//    int result;
-//    pj_status_t status;
-//
-//
-//
-//
-//    VencChn = 0;
-//    s32Ret = HI_MPI_VENC_GetChnAttr(VencChn, &stVencChnAttr);
-//    if (HI_SUCCESS != s32Ret) {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetChnAttr failed with %#x!", __FUNCTION__, s32Ret));
-//        return s32Ret;
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetChnAttr SUCCESS!", __FUNCTION__));
-//    }
-//
-//    /* Set Venc Fd. */
-//    VencFd[0] = HI_MPI_VENC_GetFd(0);
-//    if (VencFd[0] < 0) {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetFd failed with %#x!", __FUNCTION__, VencFd[0]));
-//        return s32Ret;
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetFd SUCCESS!", __FUNCTION__));
-//    }
-//    if (maxfd <= VencFd[0]) {
-//        maxfd = VencFd[0];
-//    }
-//
-//
-//
-//
-//
-//
-//
-//    while (!vp->thread_quit) {
-//        // PJ_LOG(4, (THIS_FILE, "cv_thread_func: Processed"));
-//        FD_ZERO(&read_fds);
-//        FD_SET(VencFd[0], &read_fds);
-//        TimeoutVal.tv_sec  = 2;
-//        TimeoutVal.tv_usec = 0;
-//        s32Ret = select(maxfd + 1, &read_fds, NULL, NULL, &TimeoutVal);
-//        // PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: select s32Ret=%d!", __FUNCTION__, s32Ret));
-//        if (s32Ret < 0) {
-//            PJ_LOG(4, (THIS_FILE, "%s: select failed!", __FUNCTION__));
-//            break;
-//        } else if (s32Ret == 0) {
-//            PJ_LOG(4, (THIS_FILE, "%s: get venc stream time out, exit thread", __FUNCTION__));
-//            continue;
-//        } else {
-//            for (i = 0; i < s32ChnTotal; i++) {
-//                if (FD_ISSET(VencFd[i], &read_fds)) {
-//                    /*******************************************************
-//                     step 2.1 : query how many packs in one-frame stream.
-//                    *******************************************************/
-//                    // memset(&stStream, 0, sizeof(stStream));
-//                    pj_bzero(&stStream, sizeof(stStream));
-//                    s32Ret = HI_MPI_VENC_Query(i, &stStat);
-//                    if (HI_SUCCESS != s32Ret) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_Query chn[%d] failed with %#x!", __FUNCTION__, i, s32Ret));
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    }
-//
-//                    /*******************************************************
-//                    step 2.2 :suggest to check both u32CurPacks and u32LeftStreamFrames at the same time,for example:
-//                     if(0 == stStat.u32CurPacks || 0 == stStat.u32LeftStreamFrames)
-//                     {
-//                        SAMPLE_PRT("NOTE: Current  frame is NULL!\n");
-//                        continue;
-//                     }
-//                    *******************************************************/
-//                    if (0 == stStat.u32CurPacks) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: NOTE: Current  frame is NULL!", __FUNCTION__));
-//                        continue;
-//                    }
-//                    /*******************************************************
-//                     step 2.3 : malloc corresponding number of pack nodes.
-//                    *******************************************************/
-//                    // stStream.pstPack = (VENC_PACK_S*)malloc(sizeof(VENC_PACK_S) * stStat.u32CurPacks);
-//                    stStream.pstPack = (VENC_PACK_S *)calloc(stStat.u32CurPacks, sizeof(VENC_PACK_S));
-//                    if (NULL == stStream.pstPack) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: malloc stream pack failed!", __FUNCTION__));
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    }
-//                    /*******************************************************
-//                     step 2.4 : call mpi to get one-frame stream
-//                    *******************************************************/
-//                    stStream.u32PackCount = stStat.u32CurPacks;
-//                    // clock_t tStart = clock();
-//                    // s32Ret = HI_MPI_VENC_GetStream(i, &stStream, 3600);
-//                    s32Ret = HI_MPI_VENC_GetStream(i, &stStream, HI_TRUE);
-//                    if (HI_SUCCESS != s32Ret) {
-//                        free(stStream.pstPack);
-//                        stStream.pstPack = NULL;
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetStream failed with %#x!", __FUNCTION__, s32Ret));
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    }
-//                    VENC_PACK_S*  pstData;
-//
-//                    if (stStream.u32PackCount > 1) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: ======================KEYFRAME SENDED.", __FUNCTION__));
-//                    }
-//                    for (HI_S32 d = 0; d < stStream.u32PackCount; d++) {
-//
-//                        pstData = &stStream.pstPack[d];
-//                        if (pstData->DataType.enH264EType == H264E_NALU_PSLICE) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_PSLICE", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_ISLICE) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_ISLICE", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_SEI) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_SEI", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_SPS) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_SPS", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_PPS) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_PPS", __FUNCTION__));
-//                        }
-////                        } else if (pstData->DataType.enH264EType == H264E_NALU_IPSLICE) {
-////                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_IPSLICE", __FUNCTION__));
-////                        }
-////                        HI_U32 nal_size = pstData->u32Len-pstData->u32Offset;
-//                        HI_U32 nal_size = *pstData->u32Len-pstData->u32Offset;
-//                        void *nal_address = pstData->pu8Addr+pstData->u32Offset;
-//                        // print_bytes(nal_address, nal_size);
-//                        unsigned char *tbuf = (unsigned char *)pj_pool_calloc(vp->cv_pool, nal_size, sizeof(unsigned char));
-//                        if(!tbuf ) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: Allocation tbuf failure.", __FUNCTION__));
-//                            exit (1);
-//                        }
-//                        pj_memcpy(tbuf,
-//                            nal_address,
-//                            nal_size);
-//
-//                        // const unsigned char * const nal = nal_address;
-//
-//                        // PJ_LOG(4, (THIS_FILE, "%s: nal_size = %u", __FUNCTION__, nal_size));
-//                        // PJ_LOG(4, (THIS_FILE, "%s: pstPack[d].u64PTS = %llu", __FUNCTION__, pstData->u64PTS));
-//                        // vp->frame_ts.u64 = pstData->u64PTS;
-//                        // memcpy(tmp+sz, nal_address, nal_size);
-//                        // print_bytes(tmp, nal_size);
-//                        // print_bytes(nal, nal_size);
-//                        // print_bytes(nal_address, nal_size);
-//                        // unsigned char nal_type = get_nal_type(nal, nal_size);
-//                        // unsigned char nal_type = get_nal_type(nal_address, nal_size);
-//                        // idr = PJ_FALSE;
-//                        // sz = sz + nal_size;
-//                        vp->enc_processed = 0;
-//                        int first = 0;
-//                        if (0) {
-//                            while ((vp->enc_processed < nal_size) && (!vp->thread_quit)) {
-//
-//                                // PJ_LOG(4, (THIS_FILE, "%s: ===================================vp->thread_quit = %u",
-//                                    // __FUNCTION__, vp->thread_quit));
-//                                status = pjmedia_h264_packetize(vp->pktz,
-//                                    tbuf,
-//                                    nal_size,
-//                                    &vp->enc_processed,
-//                                    &payload, &payload_len
-//                                );
-//
-//                                if (vp->enc_processed < nal_size) {
-//                                    vp->has_more_data = PJ_TRUE;
-//                                } else {
-//                                    vp->has_more_data = PJ_FALSE;
-//                                }
-//
-//
-//                                // print_bytes(nal_address, nal_size);
-//                                // print_bytes(payload, payload_len);
-//
-//                                if (status != PJ_SUCCESS) {
-//                                    /* Reset */
-//                                    vp->enc_frame_size = vp->enc_processed = 0;
-//                                    // *has_more = (h264_passthrough_data->enc_processed <
-//                                    //         h264_passthrough_data->enc_frame_size) ||
-//                                    //     (h264_passthrough_data->ilayer < h264_passthrough_data->iLayerNum);
-//
-//                                    PJ_PERROR(3,(THIS_FILE, status, "pjmedia_h264_packetize() error"));
-//                                    return status;
-//                                }
-//                                PJ_LOG(4, (THIS_FILE, "%s: enc_processed = %u of %u, payload_len = %u",
-//                                    __FUNCTION__, vp->enc_processed, nal_size, payload_len));
-//
-//                                pjmedia_frame *frame = (pjmedia_frame *)pj_pool_calloc(vp->cv_pool, 1, sizeof(pjmedia_frame));
-//                                if(!frame) {
-//                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation frame failure.", __FUNCTION__));
-//                                    exit (1);
-//                                }
-//                                frame->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//
-//                                if (first == 1) {
-//                                    frame->size = (pj_size_t)payload_len+4;
-//                                } else {
-//                                    frame->size = (pj_size_t)payload_len;
-//                                }
-//                                frame->timestamp.u64 = pstData->u64PTS;
-//
-//                                frame->buf = (unsigned char *)pj_pool_calloc(vp->cv_pool, frame->size, sizeof(unsigned char));
-//                                if(!frame->buf ) {
-//                                    PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
-//                                    exit (1);
-//                                }
-//                                if (first == 1) {
-//                                    unsigned char a[4] = {0x00, 0x00, 0x00, 0x01};
-//                                    pj_memcpy(frame->buf,
-//                                        a,
-//                                        4);
-//                                    pj_memcpy(frame->buf+4,
-//                                        payload,
-//                                        frame->size);
-//                                    first = 0;
-//                                } else {
-//                                    pj_memcpy(frame->buf,
-//                                        payload,
-//                                        frame->size);
-//                                }
-//
-//
-//                                if (stStream.u32PackCount > 1) {
-//                                    frame->bit_info |= PJMEDIA_VID_FRM_KEYFRAME;
-//                                } else {
-//                                    frame->bit_info = 0;
-//                                }
-//                                // print_bytes(nal_address, nal_size);
-//                                // print_bytes(payload, payload_len);
-//                                // print_bytes(frame->buf, frame->size);
-//                                PJ_LOG(4, (THIS_FILE, "%s: frame->size = %u, payload_len = %u", __FUNCTION__, frame->size, payload_len));
-//                                // status = pjmedia_port_put_frame(vp->client_port, frame);
-//                                status = put_frame(&vp->enc->port, frame);
-//                                if (status != PJ_SUCCESS)
-//                                    return status;
-//                                // PJ_LOG(4, (THIS_FILE, "%s: image_size=%u, frame_ts=%llu", __FUNCTION__, frame->size, vp->frame_ts.u64));
-//                                // result = (*vp->vid_cb.capture_cb)(&vp->base, vp->user_data, frame);
-//                                // pj_bzero(frame, sizeof(pjmedia_frame));
-//
-//                            }
-//                        } else {
-//                            pjmedia_frame *frame = (pjmedia_frame *)pj_pool_calloc(vp->cv_pool, 1, sizeof(pjmedia_frame));
-//                            if(!frame) {
-//                                PJ_LOG(4, (THIS_FILE, "%s: Allocation frame failure.", __FUNCTION__));
-//                                exit (1);
-//                            }
-//                            frame->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//
-//                            frame->size = (pj_size_t)nal_size;
-//                            frame->timestamp.u64 = pstData->u64PTS;
-//
-//                            frame->buf = (unsigned char *)pj_pool_calloc(vp->cv_pool, frame->size, sizeof(unsigned char));
-//                            if(!frame->buf ) {
-//                                PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
-//                                exit (1);
-//                            }
-//                            pj_memcpy(frame->buf,
-//                                nal_address,
-//                                frame->size);
-//                            // PJ_LOG(4, (THIS_FILE, "%s: nal_size = %u, nal_address =%p", __FUNCTION__, frame->size, frame->buf));
-//                            // status = pjmedia_port_put_frame(vp->client_port, frame);
-//                            status = put_frame(&vp->enc->port, frame);
-//                            if (status != PJ_SUCCESS)
-//                                return status;
-//                            // PJ_LOG(4, (THIS_FILE, "%s: image_size=%u, frame_ts=%llu", __FUNCTION__, frame->size, vp->frame_ts.u64));
-//                            // result = (*vp->vid_cb.capture_cb)(&vp->base, vp->user_data, frame);
-//                            // pj_bzero(frame, sizeof(pjmedia_frame));
-//                        }
-//
-//                    }
-//
-//                    /*******************************************************
-//                     step 2.6 : release stream
-//                    *******************************************************/
-//                    s32Ret = HI_MPI_VENC_ReleaseStream(i, &stStream);
-//                    if (HI_SUCCESS != s32Ret) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_ReleaseStream(%d), failed with %#x!", __FUNCTION__, i, s32Ret));
-//                        free(stStream.pstPack);
-//                        stStream.pstPack = NULL;
-//                        // free(pstData);
-//                        // pstData = NULL;
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    } else {
-//                        // PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_ReleaseStream[%d] SUCCESS", __FUNCTION__, i));
-//                    }
-//
-//                    free(stStream.pstPack);
-//                    stStream.pstPack = NULL;
-//                } else {
-//                    PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: FD_ISSET(VencFd[%u], &read_fds failed!", __FUNCTION__, i));
-//                }
-//            }
-//        }
-//
-//
-//    }
-//    vp->thread_quit = PJ_TRUE;
-//    vp->thread_exited = PJ_TRUE;
-//    PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: exit cycle!", __FUNCTION__));
-//    return PJ_SUCCESS;
-//}
-//
-//
-//static int cv_thread_func2 (void *arg) {
-//    PJ_LOG(4, (THIS_FILE, "cv_thread_func: Started"));
-//    pjmedia_vid_stream* vp = (pjmedia_vid_stream *) arg;
-//    
-//    
-//    VENC_CHN_ATTR_S stVencChnAttr;
-//    pj_int32_t maxfd = 0;
-////    HI_S32 maxfd = 0;
-//    struct timeval TimeoutVal;
-//    fd_set read_fds;
-////    HI_S32 VencFd[VENC_MAX_CHN_NUM];
-//    pj_int32_t VencFd[VENC_MAX_CHN_NUM];
-//    pj_int32_t s32ChnTotal = 1;
-////    HI_S32 s32ChnTotal = 1;
-//    VENC_CHN VencChn;
-////    HI_S32 s32Ret;
-//    pj_int32_t s32Ret;
-////    HI_S32 i;
-//    VENC_CHN_STAT_S stStat;
-//    
-////    VENC_STREAM_S stStream;
-//    vp->enc_frame_size =  0;
-//    vp->enc_processed = 0;
-//    // unsigned             enc_frame_size =  0;
-//    // unsigned             enc_processed = 0;
-//    // pj_uint8_t          *enc_frame_whole;
-////    const pj_uint8_t *payload;
-////    pj_size_t payload_len;
-////    int result;
-//    pj_status_t status;
-//    VencChn = 0;
-////    PJ_SUCCESS;
-//    status = HI_MPI_VENC_GetChnAttr(VencChn, &stVencChnAttr);
-//    if (PJ_SUCCESS != status) {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetChnAttr failed with %#x!", __FUNCTION__, s32Ret));
-//        return status;
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetChnAttr SUCCESS!", __FUNCTION__));
-//    }
-//    /* Set Venc Fd. */
-//    VencFd[0] = HI_MPI_VENC_GetFd(0);
-//    if (VencFd[0] < 0) {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetFd[%d] failed!", __FUNCTION__, VencFd[0]));
-//        return VencFd[0];
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetFd SUCCESS!", __FUNCTION__));
-//    }
-//    if (maxfd <= VencFd[0]) {
-//        maxfd = VencFd[0];
-//    }
-//    
-//    vp->encoder_pool = pjmedia_endpt_create_pool( vp->endpt, "encoder_pool",
-//                                          PJMEDIA_VSTREAM_SIZE*2,
-//                                          PJMEDIA_VSTREAM_INC*2);
-//    PJ_ASSERT_RETURN(vp->encoder_pool != NULL, PJ_ENOMEM);
-//    
-//    
-////    VENC_STREAM_S *stStream = (VENC_STREAM_S *) PJ_POOL_ZALLOC_T(vp->encoder_pool, VENC_STREAM_S);
-////    PJ_ASSERT_RETURN(stStream != NULL, PJ_ENOMEM);
-//        
-//    VENC_STREAM_S *stStream = (VENC_STREAM_S *)pj_pool_calloc(vp->encoder_pool, 1, sizeof(VENC_STREAM_S));
-//    MY_DBG();
-//    if(!stStream) {
-//        MY_DBG();
-//        PJ_LOG(4, (THIS_FILE, "%s: malloc stStream failed!", __FUNCTION__));
-//        vp->thread_quit = PJ_TRUE;
-////        break;
-//    }    
-//    pjmedia_frame *frame = (pjmedia_frame *)pj_pool_calloc(vp->encoder_pool, 1, sizeof(pjmedia_frame));
-//    MY_DBG();
-////                            pjmedia_frame *frame = (pjmedia_frame *)pj_pool_calloc(vp->cv_pool, 1, sizeof(pjmedia_frame));
-//    if(!frame) {
-//        PJ_LOG(4, (THIS_FILE, "%s: Allocation frame failure.", __FUNCTION__));
-//        vp->thread_quit = PJ_TRUE;
-////        break;
-//    }       
-//    
-//    while (!vp->thread_quit) {
-//        MY_DBG();
-//        MY_VAR_DBG(read_fds);
-//        FD_ZERO(&read_fds);
-//        MY_DBG();
-//        FD_SET(VencFd[0], &read_fds);
-//        MY_DBG();
-//        TimeoutVal.tv_sec  = 2;
-//        TimeoutVal.tv_usec = 0;
-//        MY_DBG();
-//        status = select(maxfd + 1, &read_fds, NULL, NULL, &TimeoutVal);
-//        if (status < 0) {
-//            PJ_LOG(4, (THIS_FILE, "%s: select failed!", __FUNCTION__));
-//            break;
-//        } else if (status == 0) {
-//            PJ_LOG(4, (THIS_FILE, "%s: get venc stream time out, exit thread", __FUNCTION__));
-//            continue;
-//        } else {
-//            MY_DBG();
-//            for (pj_int32_t i = 0; i < s32ChnTotal; i++) {
-//                MY_DBG();
-//                if (FD_ISSET(VencFd[i], &read_fds)) {
-//                    MY_DBG();
-//                    /*******************************************************
-//                     step 2.1 : query how many packs in one-frame stream.
-//                    *******************************************************/
-//                    // memset(&stStream, 0, sizeof(stStream));
-//                    pj_bzero(stStream, sizeof(stStream));
-//                    status = HI_MPI_VENC_Query(i, &stStat);
-//                    MY_DBG();
-//                    if (PJ_SUCCESS != status) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_Query chn[%d] failed with %#x!", __FUNCTION__, i, status));
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    }
-//                    MY_DBG();
-//                    /*******************************************************
-//                    step 2.2 :suggest to check both u32CurPacks and u32LeftStreamFrames at the same time,for example:
-//                     if(0 == stStat.u32CurPacks || 0 == stStat.u32LeftStreamFrames)
-//                     {
-//                        SAMPLE_PRT("NOTE: Current  frame is NULL!\n");
-//                        continue;
-//                     }
-//                    *******************************************************/
-//                    if (0 == stStat.u32CurPacks || 0 == stStat.u32LeftStreamFrames) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: NOTE: Current  frame is NULL!", __FUNCTION__));
-//                        continue;
-//                    }
-//                    MY_DBG();
-//                    /*******************************************************
-//                     step 2.3 : malloc corresponding number of pack nodes.
-//                    *******************************************************/   
-//                    stStream->pstPack = (VENC_PACK_S *)calloc(stStat.u32CurPacks, sizeof(VENC_PACK_S));
-//                    MY_DBG();
-//                    if (NULL == stStream->pstPack) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: malloc stream pack failed!", __FUNCTION__));
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    }
-//                    
-////                    stStream->pstPack = (VENC_PACK_S *)pj_pool_calloc(vp->encoder_pool, stStat.u32CurPacks, sizeof(VENC_PACK_S));
-////                    MY_DBG();
-////                    if(!stStream->pstPack) {
-////                        PJ_LOG(4, (THIS_FILE, "%s: malloc stream pack failed!", __FUNCTION__));
-////                        vp->thread_quit = PJ_TRUE;
-////                        break;
-////                    }
-//                    MY_DBG();
-//                    
-//                    /*******************************************************
-//                     step 2.4 : call mpi to get one-frame stream
-//                    *******************************************************/
-//                    stStream->u32PackCount = stStat.u32CurPacks;
-//                    // clock_t tStart = clock();
-//                    // s32Ret = HI_MPI_VENC_GetStream(i, &stStream, 3600);
-//                    status = HI_MPI_VENC_GetStream(i, stStream, PJ_TRUE);
-////                    status = HI_MPI_VENC_GetStream(i, stStream, PJ_FALSE);
-//                    if (PJ_SUCCESS != status) {
-////                        free(stStream.pstPack);
-////                        stStream.pstPack = NULL;
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_GetStream failed with %#x!", __FUNCTION__, status));
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    }
-//                    VENC_PACK_S*  pstData;
-//                    if (stStream->u32PackCount > 1) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: ======================KEYFRAME SENDED.", __FUNCTION__));
-//                    }
-//                    for (pj_int32_t d = 0; d < stStream->u32PackCount; d++) {
-////                    for (HI_S32 d = 0; d < stStream.u32PackCount; d++) {
-//                        pstData = &stStream->pstPack[d];
-//                        if (pstData->DataType.enH264EType == H264E_NALU_PSLICE) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_PSLICE", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_ISLICE) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_ISLICE", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_SEI) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_SEI", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_SPS) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_SPS", __FUNCTION__));
-//                        } else if (pstData->DataType.enH264EType == H264E_NALU_PPS) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_PPS", __FUNCTION__));
-//                        } 
-////                        } else if (pstData->DataType.enH264EType == H264E_NALU_IPSLICE) {
-////                            PJ_LOG(4, (THIS_FILE, "%s: ==================== H264E_NALU_IPSLICE", __FUNCTION__));
-////                        }
-//                        PJ_LOG(4, (THIS_FILE, "%s: pstData->u32Len    %u", __FUNCTION__, *pstData->u32Len));
-//                        PJ_LOG(4, (THIS_FILE, "%s: pstData->u32Len*size    %u", __FUNCTION__, *pstData->u32Len*sizeof(unsigned char)));
-//                        PJ_LOG(4, (THIS_FILE, "%s: pstData->u32Len    %d", __FUNCTION__, *pstData->u32Len));
-//                        PJ_LOG(4, (THIS_FILE, "%s: pstData->pu8Addr   0x%X", __FUNCTION__, pstData->pu8Addr));
-//                        PJ_LOG(4, (THIS_FILE, "%s: pstData->u32Offset 0x%X", __FUNCTION__, pstData->u32Offset));
-////                        pj_uint8_t nal_size = (pj_uint8_t)(pstData->u32Len-(pj_uint8_t)pstData->u32Offset);
-//                        pj_uint32_t nal_size = *pstData->u32Len-pstData->u32Offset;
-////                        pj_uint32_t nal_size = (pj_uint32_t)(pstData->u32Len-pstData->u32Offset);
-//                        PJ_LOG(4, (THIS_FILE, "%s: nal_size %d", __FUNCTION__, nal_size));
-////                        HI_U32 nal_size = (HI_U32)pstData->u32Len-pstData->u32Offset;
-//                        PJ_LOG(4, (THIS_FILE, "%s: After line #%d", __FUNCTION__, __LINE__));
-//                        
-//                        PJ_LOG(4, (THIS_FILE, "%s: pstData->u32Offset 0x%X", __FUNCTION__, (pj_uint32_t)pstData->u32Offset));
-////                        pj_uint32_t* nal_address1/ = (pj_uint32_t*)pstData->pu8Addr+pstData->u32Offset;
-//                        
-////                        memcpy(ch, (char*)&num, 2); /* although sizeof(int) would be better */
-//                        
-//                        pj_uint32_t* nal_address = (pj_uint32_t*)pstData->pu8Addr+pstData->u32Offset;
-////                        pj_uint32_t* nal_address = (pj_uint32_t*)pstData->pu8Addr+pstData->u32Offset;
-////                        pj_uint32_t *nal_address = (pj_uint32_t*)((pj_uint32_t)pstData->pu8Addr+(pj_uint32_t)pstData->u32Offset);
-////                        PJ_LOG(4, (THIS_FILE, "%s: nal_address1       0x%X", __FUNCTION__, nal_address1));
-//                        PJ_LOG(4, (THIS_FILE, "%s: nal_address        0x%X", __FUNCTION__, pstData->pu8Addr+pstData->u32Offset));
-//                        PJ_LOG(4, (THIS_FILE, "%s: nal_address        0x%X", __FUNCTION__, (pj_uint32_t*)pstData->pu8Addr+pstData->u32Offset));
-//                        PJ_LOG(4, (THIS_FILE, "%s: nal_address        0x%X", __FUNCTION__, nal_address));
-////                        HI_U32 *nal_address = (HI_U32*)(pstData->pu8Addr+pstData->u32Offset);
-////                        void *nal_address = pstData->pu8Addr+pstData->u32Offset;
-////                        PJ_LOG(4, (THIS_FILE, "%s: After line #%d", __FUNCTION__, __LINE__));
-////                        log_bytes1(pstData->pu8Addr+pstData->u32Offset, nal_size);
-//                        // print_bytes(nal_address, nal_size);
-////                        pj_uint8_t *tbuf = (pj_uint8_t*)pj_pool_calloc(vp->encoder_pool, nal_size, sizeof(pj_uint8_t));
-////                        unsigned char *tbuf = (unsigned char *)pj_pool_calloc(vp->cv_pool, nal_size, sizeof(unsigned char));
-////                        PJ_LOG(4, (THIS_FILE, "%s: After line #%d", __FUNCTION__, __LINE__));
-////                        if(!tbuf ) {
-////                            PJ_LOG(4, (THIS_FILE, "%s: Allocation tbuf failure.", __FUNCTION__));
-////                            exit (1);
-////                        }
-////                        PJ_LOG(4, (THIS_FILE, "%s: sizeof(tbuf) %d", __FUNCTION__, sizeof(tbuf)));
-////                        PJ_LOG(4, (THIS_FILE, "%s: sizeof(unsigned char) %d", __FUNCTION__, sizeof(unsigned char)));
-////                        PJ_LOG(4, (THIS_FILE, "%s: sizeof(HI_U32) %d", __FUNCTION__, sizeof(HI_U32)));
-////                        PJ_LOG(4, (THIS_FILE, "%s: After line #%d", __FUNCTION__, __LINE__));
-////                        pj_memcpy(tbuf, nal_address, (pj_size_t)nal_size);
-//                        
-////                        PJ_LOG(4, (THIS_FILE, "%s: After line #%d", __FUNCTION__, __LINE__));
-////                        MY_DBG();
-//                        vp->enc_processed = 0;
-//                        int first = 0;
-//                        MY_DBG();
-////                        frame->buf = NULL;
-////                        frame->buf = ((void*)0);
-////                        MY_DBG();
-////                        pj_bzero(frame, sizeof(frame));
-//                        
-//                        MY_DBG();
-//                        frame->type = PJMEDIA_FRAME_TYPE_VIDEO;
-//                        PJ_LOG(4, (THIS_FILE, "%s: nal_size: %d", __FUNCTION__, nal_size));
-//                        frame->size = (pj_size_t)nal_size;
-//                        PJ_LOG(4, (THIS_FILE, "%s: frame->size: %d", __FUNCTION__, frame->size));
-//                        frame->timestamp.u64 = pstData->u64PTS;
-//                        MY_DBG();
-//                        frame->buf = (unsigned char *)pj_pool_calloc(vp->encoder_pool, frame->size, sizeof(unsigned char));
-//                        MY_DBG();
-////                            frame->buf = (unsigned char *)pj_pool_calloc(vp->cv_pool, frame->size, sizeof(unsigned char));
-//                        if(!frame->buf ) {
-//                            PJ_LOG(4, (THIS_FILE, "%s: Allocation failure.", __FUNCTION__));
-//                            vp->thread_quit = PJ_TRUE;
-//                            break;
-//                        }
-//                        MY_DBG();
-//                        pj_memcpy(frame->buf,
-//                            nal_address,
-//                            frame->size);
-//                        MY_DBG();
-//                        // PJ_LOG(4, (THIS_FILE, "%s: nal_size = %u, nal_address =%p", __FUNCTION__, frame->size, frame->buf));
-//                        // status = pjmedia_port_put_frame(vp->client_port, frame);
-//                        status = put_frame(&vp->enc->port, frame);
-////                        if(frame) {
-//                            pj_bzero(&frame->buf, sizeof(frame->buf));
-//                            frame->buf = NULL;
-//                            pj_bzero(&frame, sizeof(frame));
-////                            frame = NULL;
-////                        }
-//                        MY_DBG();
-//                        if (status != PJ_SUCCESS) {
-//                            vp->thread_quit = PJ_TRUE;
-//                            break;
-//                        }
-//                    }
-//                    MY_DBG();
-//                    /*******************************************************
-//                     step 2.6 : release stream
-//                    *******************************************************/
-////                    PJ_LOG(4, (THIS_FILE, "%s: stStream %#x!", __FUNCTION__, stStream));
-////                    PJ_LOG(4, (THIS_FILE, "%s: stStream %#x!", __FUNCTION__, &stStream));
-//                    s32Ret = HI_MPI_VENC_ReleaseStream(i, stStream);
-//                    MY_DBG();
-////                    pj_bzero(&stStream->pstPack, sizeof(stStream->pstPack));
-//                    MY_DBG();
-////                    stStream->pstPack = NULL;
-//                    MY_DBG();
-//                    if (HI_SUCCESS != s32Ret) {
-//                        PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_ReleaseStream(%d), failed with %#x!", __FUNCTION__, i, s32Ret));
-////                        free(stStream->pstPack);
-//                        
-////                        stStream->pstPack = NULL;
-//                        // free(pstData);
-//                        // pstData = NULL;
-//                        vp->thread_quit = PJ_TRUE;
-//                        break;
-//                    } else {
-//                         PJ_LOG(4, (THIS_FILE, "%s: HI_MPI_VENC_ReleaseStream[%d] SUCCESS", __FUNCTION__, i));
-//                    }
-//                    MY_DBG();
-////                    free(stStream.pstPack);
-////                    stStream.pstPack = NULL;
-////                    pj_bzero(&stStream, sizeof(stStream));
-////                    stStream = NULL;
-////                    pj_bzero(&stStream->pstPack, sizeof(stStream->pstPack));
-////                    stStream->pstPack = NULL;
-////                    pj_pool_reset(vp->encoder_pool);
-//                    
-////                    pj_pool_safe_release(&vp->encoder_pool);
-////                    pj_pool_release(vp->encoder_pool);
-//                    MY_DBG();
-//                } else {
-//                    PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: FD_ISSET(VencFd[%u], &read_fds failed!", __FUNCTION__, i));
-//                }
-//                MY_DBG();
-//            }
-//            MY_DBG();
-//        }
-//        MY_DBG();
-//    }
-//        
-//    pj_pool_release(vp->encoder_pool);
-//    
-//    vp->thread_quit = PJ_TRUE;
-//    vp->thread_exited = PJ_TRUE;
-//    PJ_LOG(4, (THIS_FILE, "%s: cv_thread_func: exit cycle!", __FUNCTION__));
-//    return PJ_SUCCESS;
-//}
-//
-///*
-// * Create media channel.
-// */
-//static pj_status_t create_channel( pj_pool_t *pool,
-//				   pjmedia_vid_stream *stream,
-//				   pjmedia_dir dir,
-//				   unsigned pt,
-//				   const pjmedia_vid_stream_info *info,
-//				   pjmedia_vid_channel **p_channel)
-//{
-//    enum { M = 32 };
-//    pjmedia_vid_channel *channel;
-//    pj_status_t status;
-//    unsigned min_out_pkt_size;
-//    pj_str_t name;
-//    const char *type_name;
-//    pjmedia_format *fmt;
-//    char fourcc_name[5];
-//    pjmedia_port_info *pi;
-//
-//    pj_assert(info->type == PJMEDIA_TYPE_VIDEO);
-//    pj_assert(dir == PJMEDIA_DIR_DECODING || dir == PJMEDIA_DIR_ENCODING);
-//
-//    /* Allocate memory for channel descriptor */
-//    channel = PJ_POOL_ZALLOC_T(pool, pjmedia_vid_channel);
-//    PJ_ASSERT_RETURN(channel != NULL, PJ_ENOMEM);
-//
-//    /* Init vars */
-//    if (dir==PJMEDIA_DIR_DECODING) {
-//	type_name = "vstdec";
-//	fmt = &info->codec_param->dec_fmt;
-//    } else {
-//	type_name = "vstenc";
-//	fmt = &info->codec_param->enc_fmt;
-//    }
-//    name.ptr = (char*) pj_pool_alloc(pool, M);
-//    name.slen = pj_ansi_snprintf(name.ptr, M, "%s%p", type_name, stream);
-//    pi = &channel->port.info;
-//
-//    /* Init channel info. */
-//    channel->stream = stream;
-//    channel->dir = dir;
-//    channel->paused = 1;
-//    channel->pt = pt;
-//
-//    /* Allocate buffer for outgoing packet. */
-//    if (dir == PJMEDIA_DIR_ENCODING) {
-//	channel->buf_size = sizeof(pjmedia_rtp_hdr) + stream->frame_size;
-//
-//	/* It should big enough to hold (minimally) RTCP SR with an SDES. */
-//	min_out_pkt_size =  sizeof(pjmedia_rtcp_sr_pkt) +
-//			    sizeof(pjmedia_rtcp_common) +
-//			    (4 + (unsigned)stream->cname.slen) +
-//			    32;
-//
-//	if (channel->buf_size < min_out_pkt_size)
-//	    channel->buf_size = min_out_pkt_size;
-//
-//	channel->buf = pj_pool_alloc(pool, channel->buf_size);
-//	PJ_ASSERT_RETURN(channel->buf != NULL, PJ_ENOMEM);
-//    }
-//
-//    /* Create RTP and RTCP sessions: */
-//    {
-//	pjmedia_rtp_session_setting settings;
-//
-//	settings.flags = (pj_uint8_t)((info->rtp_seq_ts_set << 2) |
-//				      (info->has_rem_ssrc << 4) | 3);
-//	settings.default_pt = pt;
-//	settings.sender_ssrc = info->ssrc;
-//	settings.peer_ssrc = info->rem_ssrc;
-//	settings.seq = info->rtp_seq;
-//	settings.ts = info->rtp_ts;
-//	status = pjmedia_rtp_session_init2(&channel->rtp, settings);
-//    }
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Init port. */
-//    pjmedia_port_info_init2(pi, &name, SIGNATURE, dir, fmt);
-//    if (dir == PJMEDIA_DIR_DECODING) {
-//	channel->port.get_frame = &get_frame;
-//    } else {
-//	pi->fmt.id = info->codec_param->dec_fmt.id;
-//	channel->port.put_frame = &put_frame;
-//    }
-//
-//    /* Init port. */
-//    channel->port.port_data.pdata = stream;
-//
-//    PJ_LOG(5, (name.ptr,
-//	       "%s channel created %dx%d %s%s%.*s %d/%d(~%d)fps",
-//	       (dir==PJMEDIA_DIR_ENCODING?"Encoding":"Decoding"),
-//	       pi->fmt.det.vid.size.w, pi->fmt.det.vid.size.h,
-//	       pjmedia_fourcc_name(pi->fmt.id, fourcc_name),
-//	       (dir==PJMEDIA_DIR_ENCODING?"->":"<-"),
-//	       info->codec_info.encoding_name.slen,
-//	       info->codec_info.encoding_name.ptr,
-//	       pi->fmt.det.vid.fps.num, pi->fmt.det.vid.fps.denum,
-//	       pi->fmt.det.vid.fps.num/pi->fmt.det.vid.fps.denum));
-//
-//    /* Done. */
-//    *p_channel = channel;
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Create stream.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_create(
-//					pjmedia_endpt *endpt,
-//					pj_pool_t *pool,
-//					pjmedia_vid_stream_info *info,
-//					pjmedia_transport *tp,
-//					void *user_data,
-//					pjmedia_vid_stream **p_stream)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_create"));
-//    enum { M = 32 };
-//    pj_pool_t *own_pool = NULL;
-//    pjmedia_vid_stream *stream;
-//    unsigned jb_init, jb_max, jb_min_pre, jb_max_pre;
-//    int frm_ptime, chunks_per_frm;
-//    pjmedia_video_format_detail *vfd_enc, *vfd_dec;
-//    char *p;
-//    pj_status_t status;
-//    pjmedia_transport_attach_param att_param;
-//
-//    if (!pool) {
-//	own_pool = pjmedia_endpt_create_pool( endpt, "vstrm%p",
-//	                                      PJMEDIA_VSTREAM_SIZE,
-//	                                      PJMEDIA_VSTREAM_INC);
-//	PJ_ASSERT_RETURN(own_pool != NULL, PJ_ENOMEM);
-//	pool = own_pool;
-//    }
-//
-//    /* Allocate stream */
-//    stream = PJ_POOL_ZALLOC_T(pool, pjmedia_vid_stream);
-//    PJ_ASSERT_RETURN(stream != NULL, PJ_ENOMEM);
-//    stream->own_pool = own_pool;
-//
-//    /* Get codec manager */
-//    stream->codec_mgr = pjmedia_vid_codec_mgr_instance();
-//    PJ_ASSERT_RETURN(stream->codec_mgr, PJMEDIA_CODEC_EFAILED);
-//
-//    /* Init stream/port name */
-//    stream->name.ptr = (char*) pj_pool_alloc(pool, M);
-//    stream->name.slen = pj_ansi_snprintf(stream->name.ptr, M,
-//					 "vstrm%p", stream);
-//
-//    /* Create and initialize codec: */
-//    status = pjmedia_vid_codec_mgr_alloc_codec(stream->codec_mgr,
-//					       &info->codec_info,
-//					       &stream->codec);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Get codec param: */
-//    if (!info->codec_param) {
-//	pjmedia_vid_codec_param def_param;
-//
-//	status = pjmedia_vid_codec_mgr_get_default_param(stream->codec_mgr,
-//						         &info->codec_info,
-//						         &def_param);
-//	if (status != PJ_SUCCESS)
-//	    return status;
-//
-//	info->codec_param = pjmedia_vid_codec_param_clone(pool, &def_param);
-//	pj_assert(info->codec_param);
-//    }
-//
-//    /* Init codec param and adjust MTU */
-//    info->codec_param->dir = info->dir;
-//    info->codec_param->enc_mtu -= (sizeof(pjmedia_rtp_hdr) +
-//				   PJMEDIA_STREAM_RESV_PAYLOAD_LEN);
-//    if (info->codec_param->enc_mtu > PJMEDIA_MAX_MTU)
-//	info->codec_param->enc_mtu = PJMEDIA_MAX_MTU;
-//
-//    /* Packet size estimation for decoding direction */
-//    vfd_enc = pjmedia_format_get_video_format_detail(
-//					&info->codec_param->enc_fmt, PJ_TRUE);
-//    vfd_dec = pjmedia_format_get_video_format_detail(
-//					&info->codec_param->dec_fmt, PJ_TRUE);
-//
-//    /* Init stream: */
-//    stream->endpt = endpt;
-//    stream->dir = info->dir;
-//    stream->user_data = user_data;
-//    stream->rtcp_interval = (PJMEDIA_RTCP_INTERVAL-500 + (pj_rand()%1000)) *
-//			    info->codec_info.clock_rate / 1000;
-//    stream->rtcp_sdes_bye_disabled = info->rtcp_sdes_bye_disabled;
-//
-//    stream->jb_last_frm = PJMEDIA_JB_NORMAL_FRAME;
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-//    stream->use_ka = info->use_ka;
-//#endif
-//    stream->num_keyframe = info->sk_cfg.count;
-//
-//    stream->cname = info->cname;
-//    if (stream->cname.slen == 0) {
-//	/* Build random RTCP CNAME. CNAME has user@host format */
-//    	stream->cname.ptr = p = (char*) pj_pool_alloc(pool, 20);
-//    	pj_create_random_string(p, 5);
-//    	p += 5;
-//    	*p++ = '@'; *p++ = 'p'; *p++ = 'j';
-//    	pj_create_random_string(p, 6);
-//    	p += 6;
-//    	*p++ = '.'; *p++ = 'o'; *p++ = 'r'; *p++ = 'g';
-//    	stream->cname.slen = p - stream->cname.ptr;
-//    }
-//
-//    /* Create mutex to protect jitter buffer: */
-//
-//    status = pj_mutex_create_simple(pool, NULL, &stream->jb_mutex);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Init and open the codec. */
-//    status = pjmedia_vid_codec_init(stream->codec, pool);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//    status = pjmedia_vid_codec_open(stream->codec, info->codec_param);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Subscribe to codec events */
-//    pjmedia_event_subscribe(NULL, &stream_event_cb, stream,
-//                            stream->codec);
-//
-//    /* Estimate the maximum frame size */
-//    stream->frame_size = vfd_enc->size.w * vfd_enc->size.h * 4;
-//
-//#if 0
-//    stream->frame_size = vfd_enc->max_bps/8 * vfd_enc->fps.denum /
-//			 vfd_enc->fps.num;
-//
-//    /* As the maximum frame_size is not represented directly by maximum bps
-//     * (which includes intra and predicted frames), let's increase the
-//     * frame size value for safety.
-//     */
-//    stream->frame_size <<= 4;
-//#endif
-//
-//    /* Validate the frame size */
-//    if (stream->frame_size == 0 ||
-//	stream->frame_size > PJMEDIA_MAX_VIDEO_ENC_FRAME_SIZE)
-//    {
-//	stream->frame_size = PJMEDIA_MAX_VIDEO_ENC_FRAME_SIZE;
-//    }
-//
-//    /* Get frame length in timestamp unit */
-//    stream->frame_ts_len = info->codec_info.clock_rate *
-//                           vfd_enc->fps.denum / vfd_enc->fps.num;
-//
-//    /* Initialize send rate states */
-//    pj_get_timestamp_freq(&stream->ts_freq);
-//    if (info->rc_cfg.bandwidth == 0)
-//	info->rc_cfg.bandwidth = vfd_enc->max_bps;
-//
-//    /* For simple blocking, need to have bandwidth large enough, otherwise
-//     * we can slow down the transmission too much
-//     */
-//    if (info->rc_cfg.method==PJMEDIA_VID_STREAM_RC_SIMPLE_BLOCKING &&
-//	info->rc_cfg.bandwidth < vfd_enc->avg_bps * 3)
-//    {
-//	info->rc_cfg.bandwidth = vfd_enc->avg_bps * 3;
-//    }
-//
-//    /* Override the initial framerate in the decoding direction. This initial
-//     * value will be used by the renderer to configure its clock, and setting
-//     * it to a bit higher value can avoid the possibility of high latency
-//     * caused by clock drift (remote encoder clock runs slightly faster than
-//     * local renderer clock) or video setup lag. Note that the actual framerate
-//     * will be continuously calculated based on the incoming RTP timestamps.
-//     */
-//    vfd_dec->fps.num = vfd_dec->fps.num * 3 / 2;
-//    stream->dec_max_fps = vfd_dec->fps;
-//
-//    /* Create decoder channel */
-//    status = create_channel( pool, stream, PJMEDIA_DIR_DECODING,
-//			     info->rx_pt, info, &stream->dec);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Create encoder channel */
-//    status = create_channel( pool, stream, PJMEDIA_DIR_ENCODING,
-//			     info->tx_pt, info, &stream->enc);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    /* Create temporary buffer for immediate decoding */
-//    stream->dec_max_size = vfd_dec->size.w * vfd_dec->size.h * 4;
-//    stream->dec_frame.buf = pj_pool_alloc(pool, stream->dec_max_size);
-//
-//    /* Init jitter buffer parameters: */
-//    frm_ptime	    = 1000 * vfd_enc->fps.denum / vfd_enc->fps.num;
-//    chunks_per_frm  = stream->frame_size / PJMEDIA_MAX_MRU;
-//    if (chunks_per_frm < MIN_CHUNKS_PER_FRM)
-//	chunks_per_frm = MIN_CHUNKS_PER_FRM;
-//
-//    /* JB max count, default 500ms */
-//    if (info->jb_max >= frm_ptime)
-//	jb_max	    = info->jb_max * chunks_per_frm / frm_ptime;
-//    else
-//	jb_max	    = 500 * chunks_per_frm / frm_ptime;
-//
-//    /* JB min prefetch, default 1 frame */
-//    if (info->jb_min_pre >= frm_ptime)
-//	jb_min_pre  = info->jb_min_pre * chunks_per_frm / frm_ptime;
-//    else
-//	jb_min_pre  = 1;
-//
-//    /* JB max prefetch, default 4/5 JB max count */
-//    if (info->jb_max_pre >= frm_ptime)
-//	jb_max_pre  = info->jb_max_pre * chunks_per_frm / frm_ptime;
-//    else
-//	jb_max_pre  = jb_max * 4 / 5;
-//
-//    /* JB init prefetch, default 0 */
-//    if (info->jb_init >= frm_ptime)
-//	jb_init  = info->jb_init * chunks_per_frm / frm_ptime;
-//    else
-//	jb_init  = 0;
-//
-//    /* Calculate the decoding delay (in number of frames) based on FPS */
-//    stream->dec_delay_cnt = ((PJMEDIA_VID_STREAM_DECODE_MIN_DELAY_MSEC *
-//			      vfd_dec->fps.num) +
-//			     (1000 * vfd_dec->fps.denum) - 1) /
-//			    (1000 * vfd_dec->fps.denum);
-//    if (stream->dec_delay_cnt < 1)
-//	stream->dec_delay_cnt = 1;
-//    if (stream->dec_delay_cnt > jb_max * 4/5)
-//	stream->dec_delay_cnt = jb_max * 4/5;
-//
-//    /* Allocate array for temporary storage for assembly of incoming
-//     * frames. Add more just in case.
-//     */
-//    stream->rx_frame_cnt = chunks_per_frm * 2;
-//    stream->rx_frames = pj_pool_calloc(pool, stream->rx_frame_cnt,
-//                                       sizeof(stream->rx_frames[0]));
-//
-//    /* Create jitter buffer */
-//    status = pjmedia_jbuf_create(pool, &stream->dec->port.info.name,
-//                                 PJMEDIA_MAX_MRU,
-//				 1000 * vfd_enc->fps.denum / vfd_enc->fps.num,
-//				 jb_max, &stream->jb);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//
-//    /* Set up jitter buffer */
-//    pjmedia_jbuf_set_adaptive(stream->jb, jb_init, jb_min_pre, jb_max_pre);
-//    pjmedia_jbuf_set_discard(stream->jb, PJMEDIA_JB_DISCARD_NONE);
-//
-//    /* Init RTCP session: */
-//    {
-//	pjmedia_rtcp_session_setting rtcp_setting;
-//
-//	pjmedia_rtcp_session_setting_default(&rtcp_setting);
-//	rtcp_setting.name = stream->name.ptr;
-//	rtcp_setting.ssrc = info->ssrc;
-//	rtcp_setting.rtp_ts_base = pj_ntohl(stream->enc->rtp.out_hdr.ts);
-//	rtcp_setting.clock_rate = info->codec_info.clock_rate;
-//	rtcp_setting.samples_per_frame = 1;
-//
-//	pjmedia_rtcp_init2(&stream->rtcp, &rtcp_setting);
-//    }
-//
-//    /* Allocate outgoing RTCP buffer, should be enough to hold SR/RR, SDES,
-//     * BYE, and XR.
-//     */
-//    stream->out_rtcp_pkt_size =  sizeof(pjmedia_rtcp_sr_pkt) +
-//				 sizeof(pjmedia_rtcp_common) +
-//				 (4 + (unsigned)stream->cname.slen) +
-//				 32;
-//    if (stream->out_rtcp_pkt_size > PJMEDIA_MAX_MTU)
-//	stream->out_rtcp_pkt_size = PJMEDIA_MAX_MTU;
-//
-//    stream->out_rtcp_pkt = pj_pool_alloc(pool, stream->out_rtcp_pkt_size);
-//    pj_bzero(&att_param, sizeof(att_param));
-//    att_param.stream = stream;
-//    att_param.media_type = PJMEDIA_TYPE_VIDEO;
-//    att_param.user_data = stream;
-//    pj_sockaddr_cp(&att_param.rem_addr, &info->rem_addr);
-//    pj_sockaddr_cp(&stream->rem_rtp_addr, &info->rem_addr);
-//    if (info->rtcp_mux) {
-//	pj_sockaddr_cp(&att_param.rem_rtcp, &info->rem_addr);
-//    } else if (pj_sockaddr_has_addr(&info->rem_rtcp.addr)) {
-//	pj_sockaddr_cp(&att_param.rem_rtcp, &info->rem_rtcp);
-//    }
-//    att_param.addr_len = pj_sockaddr_get_len(&info->rem_addr);
-//    att_param.rtp_cb2 = &on_rx_rtp;
-//    att_param.rtcp_cb = &on_rx_rtcp;
-//
-//    /* Only attach transport when stream is ready. */
-//    status = pjmedia_transport_attach2(tp, &att_param);
-//    if (status != PJ_SUCCESS)
-//	return status;
-//
-//    stream->transport = tp;
-//
-//    /* Send RTCP SDES */
-//    if (!stream->rtcp_sdes_bye_disabled) {
-//        pjmedia_vid_stream_send_rtcp_sdes(stream);
-//    }
-//
-//#if defined(PJMEDIA_STREAM_ENABLE_KA) && PJMEDIA_STREAM_ENABLE_KA!=0
-//    /* NAT hole punching by sending KA packet via RTP transport. */
-//    if (stream->use_ka)
-//	send_keep_alive_packet(stream);
-//#endif
-//
-//#if TRACE_JB
-//    {
-//	char trace_name[PJ_MAXPATH];
-//	pj_ssize_t len;
-//
-//	pj_ansi_snprintf(trace_name, sizeof(trace_name),
-//			 TRACE_JB_PATH_PREFIX "%s.csv",
-//			 channel->port.info.name.ptr);
-//	status = pj_file_open(pool, trace_name, PJ_O_RDWR,
-//			      &stream->trace_jb_fd);
-//	if (status != PJ_SUCCESS) {
-//	    stream->trace_jb_fd = TRACE_JB_INVALID_FD;
-//	    PJ_PERROR(3,(THIS_FILE, status,
-//			 "Failed creating RTP trace file '%s'",
-//			 trace_name));
-//	} else {
-//	    stream->trace_jb_buf = (char*)pj_pool_alloc(pool, PJ_LOG_MAX_SIZE);
-//
-//	    /* Print column header */
-//	    len = pj_ansi_snprintf(stream->trace_jb_buf, PJ_LOG_MAX_SIZE,
-//				   "Time, Operation, Size, Frame Count, "
-//				   "Frame type, RTP Seq, RTP TS, RTP M, "
-//				   "JB size, JB burst level, JB prefetch\n");
-//	    if (len < 1 || len >= PJ_LOG_MAX_SIZE)
-//		len = PJ_LOG_MAX_SIZE - 1;
-//	    pj_file_write(stream->trace_jb_fd, stream->trace_jb_buf, &len);
-//	    pj_file_flush(stream->trace_jb_fd);
-//	}
-//    }
-//#endif
-//
-//    /* Save the stream info */
-//    pj_memcpy(&stream->info, info, sizeof(*info));
-//    stream->info.codec_param = pjmedia_vid_codec_param_clone(
-//						pool, info->codec_param);
-//    
-////    =========================================================================
-//    
-////    HISI_VENC_USER_INIT();
-//    
-//    
-//    
-////    pj_json_elem *elem;
-//    char *out_buf;
-////    unsigned size;
-////    pj_off_t size;
-//    pj_json_err_info err;
-//    
-//    pj_json_elem* elem = (pj_json_elem*)load_json_config(pool, "config.json");
-////    pj_json_elem* elem = (pj_json_elem*)load_json_config(pool, "config.json", &size);
-//    
-//    if (elem != NULL) {
-//    
-////    size = (unsigned)strlen(json_doc1);
-////    elem = pj_json_parse(pool, json_doc1, &size, &err);
-////    if (!elem) {
-////	PJ_LOG(1, (THIS_FILE, "  Error: json_verify_1() parse error"));
-//////	goto on_error;
-////    }
-//    
-////    size = (unsigned)size * 2;
-////    size = (unsigned)strlen(json_doc1) * 2;
-////    out_buf = pj_pool_alloc(pool, size);
-//
-////    if (pj_json_write(elem, out_buf, &size)) {
-////	PJ_LOG(1, (THIS_FILE, "  Error: json_verify_1() write error"));
-//////	goto on_error;
-////    }
-//
-////    PJ_LOG(3,(THIS_FILE, "Json document:\n%s", out_buf));
-//    
-////    PJ_LOG(1, (THIS_FILE, "%s", elem->value.children.next->name));
-////    pj_json_elem* sensor_json_object = (pj_json_elem*)find_value_by_name(elem, "groups");
-////    PJ_LOG(1, (THIS_FILE, "%s", sensor_json_object->name));
-//    
-////    stream->hisi_app_config;
-//    pj_bzero(&stream->hisi_app_config, sizeof(stream->hisi_app_config));
-//    
-//    stream->hisi_app_config = (HISI_SDK_APP_S*)fill_app_from_config(pool, elem);
-////    fill_app_from_config(pool, elem, &stream->hisi_app_config);
-//    
-//    PJ_LOG(1, (THIS_FILE, "stream->hisi_app_config.stViConfig.sensor.lib_name = %s", stream->hisi_app_config->stViConfig.sensor.lib_name));
-//    PJ_LOG(1, (THIS_FILE, "stream->hisi_app_config.stViConfig.sensor.sensor_name = %s", stream->hisi_app_config->stViConfig.sensor.sensor_name));
-////===========================================================================================
-////    HI_S32 s32Ret = HI_SUCCESS;
-//    
-//    start_sdk(stream->hisi_app_config);
-//    
-////===========================================================================================    
-//    }
-//    stream->has_more_data = PJ_FALSE;
-//    pjmedia_h264_packetizer_cfg  pktz_cfg;
-//    pj_bzero(&pktz_cfg, sizeof(pktz_cfg));
-//    // pktz_cfg.mtu = PJMEDIA_MAX_VIDEO_ENC_FRAME_SIZE - sizeof(pjmedia_rtp_hdr);
-//    // pktz_cfg.mtu = PJMEDIA_MAX_VID_PAYLOAD_SIZE - sizeof(pjmedia_rtp_hdr);
-//    pktz_cfg.mtu = PJMEDIA_MAX_VID_PAYLOAD_SIZE;
-//    // pktz_cfg.mtu = param->enc_mtu;
-//    // pktz_cfg.mtu = 170030;
-//    pktz_cfg.unpack_nal_start = 4;
-//    /* Packetization mode */
-//    pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_NON_INTERLEAVED;
-//    // pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_INTERLEAVED;
-//    // pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_SINGLE_NAL;
-//    // vp->cv_pool = pj_pool_create(vp->pool->factory, "cv_pool", 1024, 1024, NULL);
-//    // if (!vp->cv_pool)
-//    //     return PJ_ENOMEM;
-//    // pj_status_t
-//    
-////    status = pjmedia_h264_packetizer_create(stream->own_pool, &pktz_cfg,
-//    status = pjmedia_h264_packetizer_create(pool, &pktz_cfg,
-//                                            &stream->pktz);
-//    PJ_LOG(3, (THIS_FILE, "after LINE: %d", __LINE__));
-//    if (status != PJ_SUCCESS) {
-//        PJ_LOG(3,(THIS_FILE, "%s: pjmedia_h264_packetizer_create failed", __FUNCTION__));
-//        return status;
-//    } else {
-//        PJ_LOG(3,(THIS_FILE, "%s: pjmedia_h264_packetizer_create SUCCESS", __FUNCTION__));
-//    }
-//    // ===================================================================
-//    status = pj_thread_create (pool,
-//               "hisivideo_capture",
-//               cv_thread_func,
-//               stream,
-//               0,
-//               0,
-//               &stream->thread);
-//    if (status != PJ_SUCCESS) {
-//        PJ_LOG(4, (THIS_FILE, "PJMEDIA_DIR_CAPTURE VIDEO pj_thread_create status == PJ_ERROR"));
-//        stream->thread_quit = PJ_TRUE;
-//        // pj_thread_join(strm->play_thread);
-//        // pj_thread_destroy(strm->play_thread);
-//        // strm->play_thread = NULL;
-//    } else {
-//        PJ_LOG(4, (THIS_FILE, "PJMEDIA_DIR_CAPTURE VIDEO pj_thread_create status == PJ_SUCCESS"));
-//    }
-//    stream->cv_pool = pjmedia_endpt_create_pool( endpt, "cv_pool",
-//	                                      PJMEDIA_VSTREAM_SIZE,
-//	                                      PJMEDIA_VSTREAM_INC);
-//    PJ_ASSERT_RETURN(stream->cv_pool != NULL, PJ_ENOMEM);
-//    stream->encoder_pool = pjmedia_endpt_create_pool( endpt, "encoder_pool",
-//                                          PJMEDIA_VSTREAM_SIZE*2,
-//                                          PJMEDIA_VSTREAM_INC*2);
-//    PJ_ASSERT_RETURN(stream->encoder_pool != NULL, PJ_ENOMEM);
-//    
-//    // stream->cv_pool = pj_pool_create(pool, "cv_pool", 1024, 1024, NULL);
-//    // if (!stream->cv_pool)
-//    //     return PJ_ENOMEM;
-//    // ===================================================================
-//
-//    
-////    =========================================================================
-//    /* Success! */
-//    *p_stream = stream;
-//
-//    PJ_LOG(5,(THIS_FILE, "Video stream %s created", stream->name.ptr));
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Destroy stream.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_destroy( pjmedia_vid_stream *stream )
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_destroy"));
-//    PJ_ASSERT_RETURN(stream != NULL, PJ_EINVAL);
-//
-//#if TRACE_RC
-//    {
-//	unsigned total_time;
-//
-//	total_time = pj_elapsed_msec(&stream->tx_start, &stream->tx_end);
-//	PJ_LOG(5, (stream->name.ptr,
-//		   "RC stat: pkt_cnt=%.2f/image, sleep=%.2fms/s, fps=%.2f",
-//		   stream->rc_total_pkt*1.0/stream->rc_total_img,
-//		   stream->rc_total_sleep*1000.0/total_time,
-//		   stream->rc_total_img*1000.0/total_time));
-//    }
-//#endif
-//
-//    /* Send RTCP BYE (also SDES) */
-//    if (!stream->rtcp_sdes_bye_disabled) {
-//	send_rtcp(stream, PJ_TRUE, PJ_TRUE);
-//    }
-//
-//    /* Detach from transport
-//     * MUST NOT hold stream mutex while detaching from transport, as
-//     * it may cause deadlock. See ticket #460 for the details.
-//     */
-//    if (stream->transport) {
-//	pjmedia_transport_detach(stream->transport, stream);
-//	stream->transport = NULL;
-//    }
-//
-//    /* This function may be called when stream is partly initialized. */
-//    if (stream->jb_mutex)
-//	pj_mutex_lock(stream->jb_mutex);
-//
-//
-//    /* Free codec. */
-//    if (stream->codec) {
-//        pjmedia_event_unsubscribe(NULL, &stream_event_cb, stream,
-//                                  stream->codec);
-//	pjmedia_vid_codec_close(stream->codec);
-//	pjmedia_vid_codec_mgr_dealloc_codec(stream->codec_mgr, stream->codec);
-//	stream->codec = NULL;
-//    }
-//
-//    /* Free mutex */
-//
-//    if (stream->jb_mutex) {
-//	pj_mutex_destroy(stream->jb_mutex);
-//	stream->jb_mutex = NULL;
-//    }
-//
-//    /* Destroy jitter buffer */
-//    if (stream->jb) {
-//	pjmedia_jbuf_destroy(stream->jb);
-//	stream->jb = NULL;
-//    }
-//
-//#if TRACE_JB
-//    if (TRACE_JB_OPENED(stream)) {
-//	pj_file_close(stream->trace_jb_fd);
-//	stream->trace_jb_fd = TRACE_JB_INVALID_FD;
-//    }
-//#endif
-//
-//    pj_pool_safe_release(&stream->cv_pool);
-//    pj_pool_safe_release(&stream->encoder_pool);
-//    pj_pool_safe_release(&stream->own_pool);
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Get the port interface.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_get_port(pjmedia_vid_stream *stream,
-//						pjmedia_dir dir,
-//						pjmedia_port **p_port )
-//{
-////    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_get_port"));
-//    PJ_ASSERT_RETURN(dir==PJMEDIA_DIR_ENCODING || dir==PJMEDIA_DIR_DECODING,
-//		     PJ_EINVAL);
-//
-//    if (dir == PJMEDIA_DIR_ENCODING) {
-//	*p_port = &stream->enc->port;
-//        PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_get_port enc"));
-//    }
-//    else {
-//	*p_port = &stream->dec->port;
-//        PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_get_port dec"));
-//    }
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Get the transport object
-// */
-//PJ_DEF(pjmedia_transport*) pjmedia_vid_stream_get_transport(
-//						    pjmedia_vid_stream *st)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_get_transport"));
-//    return st->transport;
-//}
-//
-//
-///*
-// * Get stream statistics.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_get_stat(
-//					    const pjmedia_vid_stream *stream,
-//					    pjmedia_rtcp_stat *stat)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_get_stat"));
-//    PJ_ASSERT_RETURN(stream && stat, PJ_EINVAL);
-//
-//    pj_memcpy(stat, &stream->rtcp.stat, sizeof(pjmedia_rtcp_stat));
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Reset the stream statistics in the middle of a stream session.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_reset_stat(pjmedia_vid_stream *stream)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_reset_stat"));
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//
-//    pjmedia_rtcp_init_stat(&stream->rtcp.stat);
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Get jitter buffer state.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_get_stat_jbuf(
-//					    const pjmedia_vid_stream *stream,
-//					    pjmedia_jb_state *state)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_get_stat_jbuf"));
-//    PJ_ASSERT_RETURN(stream && state, PJ_EINVAL);
-//    return pjmedia_jbuf_get_state(stream->jb, state);
-//}
-//
-//
-///*
-// * Get the stream info.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_get_info(
-//					    const pjmedia_vid_stream *stream,
-//					    pjmedia_vid_stream_info *info)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_get_info"));
-//    PJ_ASSERT_RETURN(stream && info, PJ_EINVAL);
-//    pj_memcpy(info, &stream->info, sizeof(*info));
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Start stream.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_start(pjmedia_vid_stream *stream)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_start"));
-//    PJ_ASSERT_RETURN(stream && stream->enc && stream->dec, PJ_EINVALIDOP);
-//
-//    if (stream->enc && (stream->dir & PJMEDIA_DIR_ENCODING)) {
-//	stream->enc->paused = 0;
-//	//pjmedia_snd_stream_start(stream->enc->snd_stream);
-//	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream started"));
-//    } else {
-//	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream paused"));
-//    }
-//
-//    if (stream->dec && (stream->dir & PJMEDIA_DIR_DECODING)) {
-//	stream->dec->paused = 0;
-//	//pjmedia_snd_stream_start(stream->dec->snd_stream);
-//	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream started"));
-//    } else {
-//	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream paused"));
-//    }
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Check status.
-// */
-//PJ_DEF(pj_bool_t) pjmedia_vid_stream_is_running(pjmedia_vid_stream *stream,
-//                                                pjmedia_dir dir)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_is_running"));
-//    pj_bool_t is_running = PJ_TRUE;
-//
-//    PJ_ASSERT_RETURN(stream, PJ_FALSE);
-//
-//    if (dir & PJMEDIA_DIR_ENCODING) {
-//	is_running &= (stream->enc && !stream->enc->paused);
-//    }
-//
-//    if (dir & PJMEDIA_DIR_DECODING) {
-//	is_running &= (stream->dec && !stream->dec->paused);
-//    }
-//
-//    return is_running;
-//}
-//
-///*
-// * Pause stream.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_pause(pjmedia_vid_stream *stream,
-//					     pjmedia_dir dir)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_pause"));
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//
-//    if ((dir & PJMEDIA_DIR_ENCODING) && stream->enc) {
-//	stream->enc->paused = 1;
-//	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream paused"));
-//    }
-//
-//    if ((dir & PJMEDIA_DIR_DECODING) && stream->dec) {
-//	stream->dec->paused = 1;
-//
-//	/* Also reset jitter buffer */
-//	pj_mutex_lock( stream->jb_mutex );
-//	pjmedia_jbuf_reset(stream->jb);
-//	pj_mutex_unlock( stream->jb_mutex );
-//
-//	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream paused"));
-//    }
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Resume stream
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_resume(pjmedia_vid_stream *stream,
-//					      pjmedia_dir dir)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_resume"));
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//
-//    if ((dir & PJMEDIA_DIR_ENCODING) && stream->enc) {
-//	stream->enc->paused = 0;
-//	stream->force_keyframe = PJ_TRUE;
-//	PJ_LOG(4,(stream->enc->port.info.name.ptr, "Encoder stream resumed"));
-//    }
-//
-//    if ((dir & PJMEDIA_DIR_DECODING) && stream->dec) {
-//	stream->dec->paused = 0;
-//	stream->last_dec_seq = 0;
-//	PJ_LOG(4,(stream->dec->port.info.name.ptr, "Decoder stream resumed"));
-//    }
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Force stream to send video keyframe.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_send_keyframe(
-//						pjmedia_vid_stream *stream)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_send_keyframe"));
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//
-//    if (!pjmedia_vid_stream_is_running(stream, PJMEDIA_DIR_ENCODING))
-//	return PJ_EINVALIDOP;
-//
-//    stream->force_keyframe = PJ_TRUE;
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Send RTCP SDES.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_send_rtcp_sdes(
-//						pjmedia_vid_stream *stream)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_send_rtcp_sdes"));
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//
-//    return send_rtcp(stream, PJ_TRUE, PJ_FALSE);
-//}
-//
-//
-///*
-// * Send RTCP BYE.
-// */
-//PJ_DEF(pj_status_t) pjmedia_vid_stream_send_rtcp_bye(
-//						pjmedia_vid_stream *stream)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_send_rtcp_bye"));
-//    PJ_ASSERT_RETURN(stream, PJ_EINVAL);
-//    
-//    stream->thread_quit = PJ_TRUE;
-//    for (int i=0; !stream->thread_exited && i<100; ++i)
-//        // pj_thread_sleep(10);
-//        pj_thread_sleep(1);
-//    pj_thread_sleep(1);
-//    PJ_LOG(4,(THIS_FILE, "Stopping stream.."));
-//
-//
-//    if (stream->enc && stream->transport) {
-//	return send_rtcp(stream, PJ_TRUE, PJ_TRUE);
-//    }
-//
-//    return PJ_SUCCESS;
-//}
-//
-//
-///*
-// * Initialize the video stream rate control with default settings.
-// */
-//PJ_DEF(void)
-//pjmedia_vid_stream_rc_config_default(pjmedia_vid_stream_rc_config *cfg)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_rc_config_default"));
-//    pj_bzero(cfg, sizeof(*cfg));
-//    cfg->method = PJMEDIA_VID_STREAM_RC_SIMPLE_BLOCKING;
-//}
-//
-//
-///*
-// * Initialize the video stream send keyframe with default settings.
-// */
-//PJ_DEF(void)
-//pjmedia_vid_stream_sk_config_default(pjmedia_vid_stream_sk_config *cfg)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_sk_config_default"));
-//    pj_bzero(cfg, sizeof(*cfg));
-//    cfg->count = PJMEDIA_VID_STREAM_START_KEYFRAME_CNT;
-//    cfg->interval = PJMEDIA_VID_STREAM_START_KEYFRAME_INTERVAL_MSEC;
-//}
-//
-//
-///**
-// * Get RTP session information from video stream.
-// */
-//PJ_DEF(pj_status_t)
-//pjmedia_vid_stream_get_rtp_session_info(pjmedia_vid_stream *stream,
-//				    pjmedia_stream_rtp_sess_info *session_info)
-//{
-//    PJ_LOG(3, (THIS_FILE, "pjmedia_vid_stream_get_rtp_session_info"));
-//    session_info->rx_rtp = &stream->dec->rtp;
-//    session_info->tx_rtp = &stream->enc->rtp;
-//    session_info->rtcp = &stream->rtcp;
-//    return PJ_SUCCESS;
-//}
-//
-//
-//#endif /* PJMEDIA_HAS_VIDEO */
