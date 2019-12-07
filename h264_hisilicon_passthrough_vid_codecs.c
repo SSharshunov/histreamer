@@ -75,18 +75,6 @@ static pj_status_t h264_passthrough_codec_decode( pjmedia_vid_codec *codec,
 /* Definition for H264 codecs operations. */
 static pjmedia_vid_codec_op h264_passthrough_op =
 {
-//    NULL,
-//    NULL,
-//    NULL,
-//    NULL,
-//    NULL,
-//    // NULL,
-//    NULL,
-//    // NULL,
-//    NULL,
-//    // NULL,
-//    NULL,
-//    NULL
     &h264_passthrough_codec_init,
     &h264_passthrough_codec_open,
     &h264_passthrough_codec_close,
@@ -102,14 +90,6 @@ static pjmedia_vid_codec_op h264_passthrough_op =
 };
 
 /* Definition for H264 codecs factory operations. */
-//static pjmedia_vid_codec_factory_op h264_passthrough_factory_op =
-//{
-//    NULL,
-//    NULL,
-//    NULL,
-//    NULL,
-//    NULL
-//};
 static pjmedia_vid_codec_factory_op h264_passthrough_factory_op =
 {
     &h264_passthrough_test_alloc,
@@ -125,51 +105,13 @@ static struct h264_passthrough_factory {
     pjmedia_vid_codec_mgr       *mgr;
     pj_pool_factory             *pf;
     pj_pool_t                   *pool;
-    // pj_mutex_t              *mutex;
 } h264_passthrough_factory;
 
 typedef struct h264_passthrough_codec_data
 {
     pjmedia_vid_codec       *codec;
     pj_pool_t           *pool;
-//    pjmedia_vid_codec_param *prm;
-//    pj_bool_t            whole;
-//    pjmedia_h264_packetizer *pktz;
-//
-//    void            *enc_buf;
-//    unsigned             enc_buf_size;
-//
-//    unsigned             enc_input_size;
-//    unsigned             enc_wxh;
-//    unsigned             enc_fps;
-//    unsigned             enc_frm_cnt;
-//    unsigned             enc_frame_size;
-//    unsigned             enc_processed;
-//    pj_bool_t            enc_is_keyframe;
-//    pj_bool_t            force_keyframe;
-//
-//    // unsigned             enc_input_size;
-//    pj_uint8_t          *enc_frame_whole;
-//    // unsigned             enc_frame_size;
-//    // unsigned             enc_processed;
-//    pj_timestamp         ets;
-//    // SFrameBSInfo         bsi;
-//    int              ilayer;
-//    int              iLayerNum;
-//    pj_bool_t        isIDR;
-//    pj_bool_t        forceIDR;
-//
-//    /* Decoder state */
-//    // ISVCDecoder         *dec;
-//    pj_uint8_t          *dec_buf;
-//    unsigned             dec_buf_size;
 } h264_passthrough_codec_data;
-
-//#if defined(PJMEDIA_HAS_H264_HISILICON_PASSTHROUGH_VID_CODEC) && defined(PJMEDIA_HAS_VIDEO)
-
-//#if defined(PJMEDIA_HAS_H264_HISILICON_PASSTHROUGH_VID_CODEC) && \
-//            PJMEDIA_HAS_H264_HISILICON_PASSTHROUGH_VID_CODEC != 0 && \
-//    defined(PJMEDIA_HAS_VIDEO) && (PJMEDIA_HAS_VIDEO != 0)
 
 #define THIS_FILE   "h264_hisilicon_passthrough_vid_codecs.c"
 
@@ -228,23 +170,22 @@ on_error:
  */
 PJ_DEF(pj_status_t) pjmedia_codec_h264_hisilicon_passthrough_vid_deinit(void)
 {
-    PJ_LOG(4, (THIS_FILE, "pjmedia_codec_h264_passthrough_vid_deinit"));
-
     pj_status_t status = PJ_SUCCESS;
 
     if (h264_passthrough_factory.pool == NULL) {
     /* Already deinitialized */
-    return PJ_SUCCESS;
+        return PJ_SUCCESS;
     }
 
     /* Unregister OpenH264 codecs factory. */
     status = pjmedia_vid_codec_mgr_unregister_factory(h264_passthrough_factory.mgr,
                               &h264_passthrough_factory.base);
-
+    
     /* Destroy pool. */
     pj_pool_release(h264_passthrough_factory.pool);
-    h264_passthrough_factory.pool = NULL;
-
+    if (h264_passthrough_factory.pool != NULL) {
+        h264_passthrough_factory.pool = NULL;
+    }
     return status;
 }
 
@@ -253,12 +194,9 @@ PJ_DEF(pj_status_t) pjmedia_codec_h264_hisilicon_passthrough_vid_deinit(void)
  */
 static pj_status_t h264_passthrough_test_alloc( pjmedia_vid_codec_factory *factory, const pjmedia_vid_codec_info *info ) {
 
-    PJ_LOG(4, (THIS_FILE, "h264_passthrough_test_alloc"));
-    
     PJ_ASSERT_RETURN(factory == &h264_passthrough_factory.base, PJ_EINVAL);
 
     if (info->fmt_id == PJMEDIA_FORMAT_H264 && info->pt != 0) {
-        PJ_LOG(4, (THIS_FILE, "TEST CODEC SUCCESS"));
         return PJ_SUCCESS;
     }
     
@@ -273,34 +211,23 @@ static pj_status_t h264_passthrough_enum_info(pjmedia_vid_codec_factory *factory
                                    unsigned *count,
                                    pjmedia_vid_codec_info info[])
 {
-    PJ_LOG(3, (THIS_FILE, "h264_passthrough_enum_info"));
-
     PJ_ASSERT_RETURN(info && *count > 0, PJ_EINVAL);
     PJ_ASSERT_RETURN(factory == &h264_passthrough_factory.base, PJ_EINVAL);
 
     *count = 1;
-    // info->fmt_id = PJMEDIA_FORMAT_I420;
     info->fmt_id = PJMEDIA_FORMAT_H264;
     info->pt = PJMEDIA_RTP_PT_H264;
     info->encoding_name = pj_str((char*)"H264");
     info->encoding_desc = pj_str((char*)"Hisilicon H264 codec");
-//    info->encoding_desc = pj_str((char*)"OpenH264 codec");
     info->clock_rate = 90000;
-    // info->dir = PJMEDIA_DIR_ENCODING;
-    info->dir = PJMEDIA_DIR_ENCODING_DECODING;
+    info->dir = PJMEDIA_DIR_ENCODING;
+//    info->dir = PJMEDIA_DIR_ENCODING_DECODING;
     info->dec_fmt_id_cnt = 1;
-    // info->dec_fmt_id[0] = PJMEDIA_FORMAT_I420;
     info->dec_fmt_id[0] = PJMEDIA_FORMAT_I420;
-    // info->packings = PJMEDIA_VID_PACKING_PACKETS;
+    info->packings = PJMEDIA_VID_PACKING_PACKETS;
     // info->packings = PJMEDIA_VID_PACKING_WHOLE;
-    info->packings = PJMEDIA_VID_PACKING_PACKETS | PJMEDIA_VID_PACKING_WHOLE;
-    // info->fps_cnt = 3;
-    // info->fps[0].num = 15;
-    // info->fps[0].denum = 1;
-    // info->fps[1].num = 25;
-    // info->fps[1].denum = 1;
-    // info->fps[2].num = 30;
-    // info->fps[2].denum = 1;
+//    info->packings = PJMEDIA_VID_PACKING_WHOLE;
+//    info->packings = PJMEDIA_VID_PACKING_PACKETS | PJMEDIA_VID_PACKING_WHOLE;
 
     info->fps_cnt = 1;
     info->fps[0].num = 25;
@@ -315,17 +242,14 @@ static pj_status_t h264_passthrough_enum_info(pjmedia_vid_codec_factory *factory
  */
 static pj_status_t h264_passthrough_default_attr( pjmedia_vid_codec_factory *factory,
     const pjmedia_vid_codec_info *info, pjmedia_vid_codec_param *attr ) {
-    
-    PJ_LOG(3, (THIS_FILE, "h264_passthrough_default_attr"));
 
     PJ_ASSERT_RETURN(factory == &h264_passthrough_factory.base, PJ_EINVAL);
     PJ_ASSERT_RETURN(info && attr, PJ_EINVAL);
 
     pj_bzero(attr, sizeof(pjmedia_vid_codec_param));
 
-    attr->dir = PJMEDIA_DIR_ENCODING_DECODING;
+    attr->dir = PJMEDIA_DIR_CAPTURE;
     attr->packing = PJMEDIA_VID_PACKING_PACKETS;
-    // attr->packing = PJMEDIA_VID_PACKING_WHOLE;
 
     /* Encoded format */
     pjmedia_format_init_video(&attr->enc_fmt, PJMEDIA_FORMAT_H264,
@@ -338,17 +262,11 @@ static pj_status_t h264_passthrough_default_attr( pjmedia_vid_codec_factory *fac
     /* Encoding fmtp */
     attr->enc_fmtp.cnt = 2;
     attr->enc_fmtp.param[0].name = pj_str((char*)"profile-level-id");
-    attr->enc_fmtp.param[0].val = pj_str((char*)"42001e");
+    attr->enc_fmtp.param[0].val = pj_str((char*)"4d0028");
+//    attr->enc_fmtp.param[0].val = pj_str((char*)"4d0014");
+//    attr->enc_fmtp.param[0].val = pj_str((char*)"42001e");
     attr->enc_fmtp.param[1].name = pj_str((char*)" packetization-mode");
     attr->enc_fmtp.param[1].val = pj_str((char*)"1");
-
-    /* Decoding fmtp */
-    // attr->dec_fmtp.cnt = 2;
-    // attr->dec_fmtp.param[0].name = pj_str((char*)"profile-level-id");
-    // attr->dec_fmtp.param[0].val = pj_str((char*)"42001e");
-    // // attr->dec_fmtp.param[0].val = pj_str((char*)"42e01e");
-    // attr->dec_fmtp.param[1].name = pj_str((char*)" packetization-mode");
-    // attr->dec_fmtp.param[1].val = pj_str((char*)"1");
 
     /* Bitrate */
     attr->enc_fmt.det.vid.avg_bps = DEFAULT_AVG_BITRATE;
@@ -392,7 +310,7 @@ static pj_status_t h264_passthrough_alloc_codec(pjmedia_vid_codec_factory *facto
     codec->codec_data = h264_passthrough_data;
 
     *p_codec = codec;
-    PJ_LOG(3, (THIS_FILE, "h264_passthrough_alloc_codec SUCCESS"));
+    
     return PJ_SUCCESS;
 
 on_error:
@@ -406,7 +324,6 @@ on_error:
 static pj_status_t h264_passthrough_dealloc_codec(pjmedia_vid_codec_factory *factory,
                                        pjmedia_vid_codec *codec )
 {
-    PJ_LOG(3, (THIS_FILE, "h264_passthrough_dealloc_codec"));
     h264_passthrough_codec_data *h264_passthrough_data;
 
     PJ_ASSERT_RETURN(codec, PJ_EINVAL);
@@ -417,15 +334,6 @@ static pj_status_t h264_passthrough_dealloc_codec(pjmedia_vid_codec_factory *fac
     pj_pool_release(h264_passthrough_data->pool);
     return PJ_SUCCESS;
 }
-
-
-
-
-
-
-
-
-
 
 /*
  * Init codec.
@@ -445,113 +353,7 @@ static pj_status_t h264_passthrough_codec_init(pjmedia_vid_codec *codec,
 static pj_status_t h264_passthrough_codec_open(pjmedia_vid_codec *codec,
                                     pjmedia_vid_codec_param *codec_param )
 {
-    PJ_LOG(3, (THIS_FILE, "h264_passthrough_codec_open"));
-//    h264_passthrough_codec_data    *h264_passthrough_data;
-//    pjmedia_vid_codec_param *param;
-//    pjmedia_h264_packetizer_cfg  pktz_cfg;
-//    pjmedia_vid_codec_h264_fmtp  h264_fmtp;
-//
-//    pj_status_t      status;
-//
-//    PJ_ASSERT_RETURN(codec && codec_param, PJ_EINVAL);
-//
-//    PJ_LOG(3,(THIS_FILE, "Opening codec.."));
-//
-//    h264_passthrough_data = (h264_passthrough_codec_data*) codec->codec_data;
-//    h264_passthrough_data->prm = pjmedia_vid_codec_param_clone( h264_passthrough_data->pool, codec_param);
-//    param = h264_passthrough_data->prm;
-//
-//    h264_passthrough_data->force_keyframe == PJ_FALSE;
-//
-//    PJ_LOG(3,(THIS_FILE, "%s: Parse remote fmtp", __FUNCTION__));
-//    /* Parse remote fmtp */
-//    pj_bzero(&h264_fmtp, sizeof(h264_fmtp));
-//    status = pjmedia_vid_codec_h264_parse_fmtp(&param->enc_fmtp, &h264_fmtp);
-//    if (status != PJ_SUCCESS) {
-//        PJ_LOG(3,(THIS_FILE, "%s: pjmedia_vid_codec_h264_parse_fmtp failed", __FUNCTION__));
-//        return status;
-//    } else {
-//        PJ_LOG(3,(THIS_FILE, "%s: pjmedia_vid_codec_h264_parse_fmtp SUCCESS", __FUNCTION__));
-//    }
-//
-//    /* Apply SDP fmtp to format in codec param */
-//    if (!param->ignore_fmtp) {
-//        status = pjmedia_vid_codec_h264_apply_fmtp(param);
-//        if (status != PJ_SUCCESS) {
-//            PJ_LOG(3,(THIS_FILE, "%s: pjmedia_vid_codec_h264_apply_fmtp failed", __FUNCTION__));
-//            return status;
-//        } else {
-//            PJ_LOG(3,(THIS_FILE, "%s: pjmedia_vid_codec_h264_apply_fmtp SUCCESS", __FUNCTION__));
-//        }
-//    }
-//
-//    pj_bzero(&pktz_cfg, sizeof(pktz_cfg));
-//    pktz_cfg.mtu = param->enc_mtu;
-//    // pktz_cfg.mtu = 170030;
-//    pktz_cfg.unpack_nal_start = 4;
-//    /* Packetization mode */
-//#if 0
-//    if (h264_fmtp.packetization_mode == 0)
-//    pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_SINGLE_NAL;
-//    else if (h264_fmtp.packetization_mode == 1)
-//    pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_NON_INTERLEAVED;
-//    else
-//    return PJ_ENOTSUP;
-//#else
-//    if (h264_fmtp.packetization_mode!=PJMEDIA_H264_PACKETIZER_MODE_SINGLE_NAL &&
-//        h264_fmtp.packetization_mode!=PJMEDIA_H264_PACKETIZER_MODE_NON_INTERLEAVED
-//    ) {
-//        return PJ_ENOTSUP;
-//    }
-//    /* Better always send in single NAL mode for better compatibility */
-//    pktz_cfg.mode = PJMEDIA_H264_PACKETIZER_MODE_SINGLE_NAL;
-//#endif
-//
-//    status = pjmedia_h264_packetizer_create(h264_passthrough_data->pool, &pktz_cfg,
-//                                            &h264_passthrough_data->pktz);
-//    if (status != PJ_SUCCESS) {
-//        PJ_LOG(3,(THIS_FILE, "%s: pjmedia_h264_packetizer_create failed", __FUNCTION__));
-//        return status;
-//    } else {
-//        PJ_LOG(3,(THIS_FILE, "%s: pjmedia_h264_packetizer_create SUCCESS", __FUNCTION__));
-//    }
-//
-//    h264_passthrough_data->whole = (param->packing == PJMEDIA_VID_PACKING_WHOLE);
-//    if (param->packing == PJMEDIA_VID_PACKING_WHOLE) {
-//        PJ_LOG(3,(THIS_FILE, "%s: param->packing == PJMEDIA_VID_PACKING_WHOLE", __FUNCTION__));
-//    } else {
-//        PJ_LOG(3,(THIS_FILE, "%s: param->packing != PJMEDIA_VID_PACKING_WHOLE", __FUNCTION__));
-//    }
-//
-//
-//    if (0) {
-//        /* Init format info and apply-param of encoder */
-//        const pjmedia_video_format_info *enc_vfi;
-//        pjmedia_video_apply_fmt_param    enc_vafp;
-//
-//        enc_vfi = pjmedia_get_video_format_info(NULL,codec_param->dec_fmt.id);
-//        if (!enc_vfi)
-//            return PJ_EINVAL;
-//
-//        pj_bzero(&enc_vafp, sizeof(enc_vafp));
-//        enc_vafp.size = codec_param->enc_fmt.det.vid.size;
-//        enc_vafp.buffer = NULL;
-//        status = (*enc_vfi->apply_fmt)(enc_vfi, &enc_vafp);
-//        if (status != PJ_SUCCESS)
-//            return status;
-//
-//        h264_passthrough_data->enc_wxh = codec_param->enc_fmt.det.vid.size.w * codec_param->enc_fmt.det.vid.size.h;
-//
-//        h264_passthrough_data->enc_input_size = enc_vafp.framebytes;
-//        if (!h264_passthrough_data->whole) {
-//            h264_passthrough_data->enc_buf_size = (unsigned)enc_vafp.framebytes;
-//            h264_passthrough_data->enc_buf = pj_pool_alloc(h264_passthrough_data->pool,
-//                                h264_passthrough_data->enc_buf_size);
-//        }
-//    }
-//
-//    /* Need to update param back after values are negotiated */
-//    pj_memcpy(codec_param, param, sizeof(*codec_param));
+    PJ_UNUSED_ARG(codec);
     return PJ_SUCCESS;
 }
 
@@ -560,7 +362,7 @@ static pj_status_t h264_passthrough_codec_encode_more(pjmedia_vid_codec *codec,
                                            pjmedia_frame *output,
                                            pj_bool_t *has_more)
 {
-    PJ_LOG(3, (THIS_FILE, "h264_passthrough_codec_encode_more"));
+    PJ_UNUSED_ARG(codec);
     return PJ_SUCCESS;
 }
 
@@ -570,7 +372,6 @@ static pj_status_t h264_passthrough_codec_encode_more(pjmedia_vid_codec *codec,
 static pj_status_t h264_passthrough_codec_modify(pjmedia_vid_codec *codec,
                                       const pjmedia_vid_codec_param *param)
 {
-    PJ_LOG(3, (THIS_FILE, "h264_passthrough_codec_modify"));
     PJ_ASSERT_RETURN(codec && param, PJ_EINVAL);
     PJ_UNUSED_ARG(codec);
     PJ_UNUSED_ARG(param);
@@ -580,14 +381,7 @@ static pj_status_t h264_passthrough_codec_modify(pjmedia_vid_codec *codec,
 static pj_status_t h264_passthrough_codec_get_param(pjmedia_vid_codec *codec,
                                          pjmedia_vid_codec_param *param)
 {
-    PJ_LOG(3, (THIS_FILE, "h264_passthrough_codec_get_param"));
-//    struct h264_passthrough_codec_data *h264_passthrough_data;
-//
-//    PJ_ASSERT_RETURN(codec && param, PJ_EINVAL);
-//
-//    h264_passthrough_data = (h264_passthrough_codec_data*) codec->codec_data;
-//    pj_memcpy(param, h264_passthrough_data->prm, sizeof(*param));
-
+    PJ_UNUSED_ARG(codec);
     return PJ_SUCCESS;
 }
 
@@ -598,7 +392,7 @@ static pj_status_t h264_passthrough_codec_encode_begin(pjmedia_vid_codec *codec,
                                             pjmedia_frame *output,
                                             pj_bool_t *has_more)
 {
-    PJ_LOG(3, (THIS_FILE, "h264_passthrough_codec_encode_begin"));
+    PJ_UNUSED_ARG(codec);
     return PJ_SUCCESS;
 }
 
@@ -612,7 +406,7 @@ static pj_status_t h264_passthrough_codec_decode( pjmedia_vid_codec *codec,
                     unsigned out_size,
                     pjmedia_frame *output)
 {
-    PJ_LOG(3, (THIS_FILE, "h264_passthrough_codec_decode"));
+    PJ_UNUSED_ARG(codec);
     return PJ_SUCCESS;
 }
 
@@ -621,7 +415,6 @@ static pj_status_t h264_passthrough_codec_decode( pjmedia_vid_codec *codec,
  */
 static pj_status_t h264_passthrough_codec_close( pjmedia_vid_codec *codec )
 {
-    PJ_LOG(3, (THIS_FILE, "h264_passthrough_codec_close"));
     PJ_ASSERT_RETURN(codec, PJ_EINVAL);
     PJ_UNUSED_ARG(codec);
     return PJ_SUCCESS;
